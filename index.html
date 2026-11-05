@@ -85,7 +85,7 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
 
   <section class="card sum" aria-label="Resumen de ayer">
     <button id="sumBtn" aria-expanded="true">
-      <span><strong style="font-size:14px;letter-spacing:.04em">AYER EN LA RED</strong><br><span class="meta" id="sumMeta">Resumen IA</span></span>
+      <span><strong id="sumTitle" style="font-size:14px;letter-spacing:.04em">AYER EN LA RED</strong><br><span class="meta" id="sumMeta">Resumen IA</span></span>
       <span class="meta" style="font-size:18px;color:var(--blue)" id="sumIcon">−</span>
     </button>
     <div class="body" id="sumBody">
@@ -97,13 +97,13 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
   <section class="grid2 kpis" aria-label="Indicadores clave">
     <div class="kpi"><span class="l">Demanda</span><span class="v" style="color:var(--blue)" id="kDem">–</span><span class="u" id="kDemU">MW · tiempo real</span></div>
     <div class="kpi"><span class="l">Renovable</span><span class="v" style="color:var(--green)" id="kRen">–</span><span class="u">% hoy</span></div>
-    <div class="kpi"><span class="l">Emisiones</span><span class="v" id="kCo2">–</span><span class="u">tCO₂ eq · hoy</span></div>
+    <div class="kpi"><span class="l">Emisiones</span><span class="v" id="kCo2">–</span><span class="u">tCO₂ eq · hoy (prov.)</span></div>
     <div class="kpi"><span class="l">Precio</span><span class="v" style="color:var(--orange)" id="kPre">–</span><span class="u" id="kPreU">€/MWh · ahora</span></div>
   </section>
 
   <div class="seg" role="group" aria-label="Periodo" id="periods"></div>
   <nav class="grid3 tabs" role="tablist" aria-label="Categorías" id="tabs"></nav>
-  <main id="panel" style="display:flex;flex-direction:column;gap:12px"></main>
+  <main id="panel" role="tabpanel" style="display:flex;flex-direction:column;gap:12px"></main>
 
   <dialog id="help" class="card help" aria-labelledby="helpT">
     <div class="helpHead"><strong id="helpT">AYUDA</strong><button id="helpClose" class="helpBtn" type="button" aria-label="Cerrar ayuda">×</button></div>
@@ -111,11 +111,11 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
     <ul>
       <li><strong>Demanda:</strong> potencia demandada en MW, con la hora del dato. Se muestra el penúltimo valor porque el último es provisional.</li>
       <li><strong>Renovable:</strong> porcentaje de la generación de hoy que procede de fuentes renovables.</li>
-      <li><strong>Emisiones:</strong> toneladas de CO₂ equivalente acumuladas hoy.</li>
+      <li><strong>Emisiones:</strong> toneladas de CO₂ equivalente que REData publica para hoy. Es un dato provisional y no un acumulado hasta esta hora, así que puede superar el total de ayer.</li>
       <li><strong>Precio:</strong> último precio disponible en €/MWh.</li>
     </ul>
     <h3>Periodos</h3>
-    <p>Hoy, Mes y Año cambian el rango de la mayoría de los bloques. REData no ofrece todos los datos en todos los rangos, así que algunos bloques usan otro periodo, indicado en su título: «(ayer)», «(mes anterior)» o «(mes en curso)».</p>
+    <p>Hoy, Mes y Año cambian el rango de la mayoría de los bloques. REData no ofrece todos los datos en todos los rangos, así que algunos bloques usan otro periodo, indicado en su título: «(ayer)», «(mes anterior)», «(mes en curso)» o «(año en curso)».</p>
     <h3>Pestañas</h3>
     <ul>
       <li><strong>Balance:</strong> energía por fuente y consumo.</li>
@@ -149,16 +149,23 @@ const PALETTE = ['#7FC4F0','#E3A42B','#4FC08D','#B48CE0','#F08A4B','#3F9E8C','#9
 /* ---------- periodos ---------- */
 const pad = n => String(n).padStart(2,'0');
 const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// REData trabaja en hora peninsular: las fechas se calculan en Madrid, esté donde esté el usuario.
+const madrid = t => new Date((t===undefined?new Date():new Date(t)).toLocaleString('en-US',{timeZone:'Europe/Madrid'}));
 function range(p){
-  const now = new Date(), s = new Date(now);
+  const now = madrid(), s = new Date(now);
   if(p==='hoy'){ s.setHours(0,0,0,0); return {start:iso(s), end:iso(now), trunc:'hour'}; }
   if(p==='mes'){ s.setDate(1); s.setHours(0,0,0,0); return {start:iso(s), end:iso(now), trunc:'day'}; }
   s.setMonth(0,1); s.setHours(0,0,0,0); return {start:iso(s), end:iso(now), trunc:'month'};
 }
-function yesterday(){ const s=new Date(); s.setDate(s.getDate()-1); s.setHours(0,0,0,0); const e=new Date(s); e.setHours(23,59,0,0); return {start:iso(s), end:iso(e), trunc:'day'}; }
-function lastMonth(){ const n=new Date(), s=new Date(n.getFullYear(),n.getMonth()-1,1), e=new Date(n.getFullYear(),n.getMonth(),0,23,59); return {start:iso(s), end:iso(e), trunc:'month'}; }
+function yesterday(){ const s=madrid(); s.setDate(s.getDate()-1); s.setHours(0,0,0,0); const e=new Date(s); e.setHours(23,59,0,0); return {start:iso(s), end:iso(e), trunc:'day'}; }
+function lastMonth(){ const n=madrid(), s=new Date(n.getFullYear(),n.getMonth()-1,1), e=new Date(n.getFullYear(),n.getMonth(),0,23,59); return {start:iso(s), end:iso(e), trunc:'month'}; }
 // De enero al último mes cerrado (en febrero, desde el enero anterior: algunos endpoints fallan con un solo mes).
 function closedMonths(){ const lm=lastMonth(), y=+lm.start.slice(0,4), ini=lm.start.slice(5,7)==='01'?y-1:y; return {...lm, start:`${ini}-01-01T00:00`}; }
+
+// Fecha de ayer tal como la guarda el cron (dd/mm/aaaa).
+const ayerEs = () => { const [y,m,d]=yesterday().start.slice(0,10).split('-'); return `${d}/${m}/${y}`; };
+// Último valor que no esté en el futuro: algunas series pueden traer horas por llegar.
+const current = s => s.values.filter(x=>+new Date(x.t)<=Date.now()).pop() || s.values[s.values.length-1];
 
 /* ---------- API ---------- */
 const cache = new Map();
@@ -218,7 +225,7 @@ function stackBars(list, h=130){
 }
 function legend(list){ return `<div class="legend">${list.map((s,i)=>`<span><span class="sw" style="background:${colorOf(s,i)}"></span>${esc(s.title)}</span>`).join('')}</div>`; }
 // El formato depende del tramo que abarca el gráfico, no del periodo elegido: algunos bloques muestran otro rango.
-function label(t, span){ if(!t) return ''; const d=new Date(t), D=864e5; return span<=2*D?pad(d.getHours())+'h':span<=62*D?d.getDate()+'/'+(d.getMonth()+1):span<=400*D?d.toLocaleDateString('es-ES',{month:'short'}):d.getFullYear(); }
+function label(t, span){ if(!t) return ''; const d=madrid(t), D=864e5; return span<=2*D?pad(d.getHours())+'h':span<=62*D?d.getDate()+'/'+(d.getMonth()+1):span<=400*D?d.toLocaleDateString('es-ES',{month:'short'}):d.getFullYear(); }
 function rows(list, fmt){ return list.map((s,i)=>`<div class="row"><span><span class="sw" style="background:${colorOf(s,i)}"></span>${esc(s.title)}</span><span>${fmt(s)}</span></div>`).join(''); }
 
 /* ---------- bloques ---------- */
@@ -236,19 +243,18 @@ const TABS = {
   }],
   demanda: ['Demanda', () => {
     // demanda/evolucion rechaza time_trunc=hour: con «Hoy» se usa el endpoint en tiempo real.
-    if(state.period==='hoy') block('Demanda en tiempo real','demanda/demanda-tiempo-real', d=>{const m=d.filter(s=>/^(real|prevista)$/i.test(s.title)).map(s=>/^real$/i.test(s.title)&&s.values.length>1?{...s,values:s.values.slice(0,-1)}:s); return m.length?lineChart(m)+legend(m)+rows(m,s=>nf(last(s).v)+' MW'):'<p class="muted">Sin datos para este periodo.</p>';});
+    if(state.period==='hoy') block('Demanda en tiempo real','demanda/demanda-tiempo-real', d=>{const m=d.filter(s=>/^(real|prevista)$/i.test(s.title)).map(s=>/^real$/i.test(s.title)&&s.values.length>1?{...s,values:s.values.slice(0,-1)}:s); return m.length?lineChart(m)+legend(m)+rows(m,s=>nf(current(s).v)+' MW'):'<p class="muted">Sin datos para este periodo.</p>';});
     else block('Evolución de la demanda','demanda/evolucion', d=>lineChart(d)+rows(d,s=>energy(sum(s))));
     // Solo admite time_trunc=month y devuelve energía (el día de mayor demanda del mes), no potencia.
     block('Día de máxima demanda (mes anterior)','demanda/demanda-maxima-diaria', d=>rows(d,s=>energy(Math.max(...s.values.map(v=>v.v)))), lastMonth());
-    block('Demanda por sector (IRE)','demanda/ire-general', d=>rows(d,s=>nf(last(s).v,1)), range('anio')); // índice mensual: no admite datos por días
+    block('Demanda por sector (IRE) (año en curso)','demanda/ire-general', d=>rows(d,s=>nf(last(s).v,1)), range('anio')); // índice mensual: no admite datos por días
   }],
   generacion: ['Generación', () => {
     // Con «Hoy» se muestra el dato diario de ayer: estos endpoints no responden por horas.
     const hoy=state.period==='hoy', r=hoy?yesterday():null, t=x=>hoy?x+' (ayer)':x;
     block(t('Generación por tecnología'),'generacion/estructura-generacion', d=>{const main=d.filter(s=>!/total/i.test(s.title)); return stackBars(main)+legend(main)+rows(main,s=>energy(sum(s)));}, r);
     block(t('Renovable vs no renovable'),'generacion/evolucion-renovable-no-renovable', d=>(hoy?'':lineChart(d))+rows(d,s=>energy(sum(s))), r);
-    block(t('Emisiones de CO₂'),'generacion/no-renovables-detalle-emisiones-CO2', d=>rows(d,s=>nf(sum(s))+' t'), r);
-    block('Potencia instalada','generacion/potencia-instalada', d=>rows(d.filter(s=>!/total/i.test(s.title)),s=>nf(last(s).v)+' MW'), range('anio'));
+    block(t('Emisiones de CO₂'),'generacion/no-renovables-detalle-emisiones-CO2', d=>rows(d,s=>/MWh/.test(s.title)?nf(last(s).v,3)+' t/MWh':nf(sum(s))+' t'), r);
   }],
   intercambios: ['Intercambios', () => {
     // Con «Hoy» se muestra el dato diario de ayer.
@@ -260,9 +266,9 @@ const TABS = {
   }],
   transporte: ['Red', () => {
     const r = range('anio');
-    block('Energía no suministrada y TIM','transporte/ens-tim', d=>rows(d,s=>nf(sum(s),1)), r);
-    block('Número de cortes','transporte/numero-cortes', d=>rows(d,s=>nf(sum(s))), r);
-    block('Índice de disponibilidad','transporte/indice-disponibilidad', d=>rows(d,s=>nf(last(s).v,2)+' %'), r);
+    block('Energía no suministrada y TIM (año en curso)','transporte/ens-tim', d=>rows(d,s=>nf(sum(s),1)), r);
+    block('Número de cortes (año en curso)','transporte/numero-cortes', d=>rows(d,s=>nf(sum(s))), r);
+    block('Índice de disponibilidad (año en curso)','transporte/indice-disponibilidad', d=>rows(d,s=>nf(last(s).v,2)+' %'), r);
     block('Kilómetros de líneas (mes anterior)','transporte/kilometros-lineas', d=>rows(d,s=>nf(last(s).v)+' km'), closedMonths());
   }],
   mercados: ['Mercados', () => {
@@ -282,9 +288,9 @@ const state = {tab:'balance', period:'hoy'};
 const PERIODS = [['hoy','Hoy'],['mes','Mes'],['anio','Año']];
 function renderNav(){
   document.getElementById('periods').innerHTML = PERIODS.map(([k,l])=>`<button data-p="${k}" aria-pressed="${k===state.period}">${l}</button>`).join('');
-  document.getElementById('tabs').innerHTML = Object.entries(TABS).map(([k,[l]])=>`<button role="tab" data-t="${k}" aria-selected="${k===state.tab}">${l}</button>`).join('');
+  document.getElementById('tabs').innerHTML = Object.entries(TABS).map(([k,[l]])=>`<button role="tab" id="tab-${k}" aria-controls="panel" data-t="${k}" aria-selected="${k===state.tab}">${l}</button>`).join('');
 }
-function renderPanel(){ document.getElementById('panel').innerHTML=''; TABS[state.tab][1](); }
+function renderPanel(){ const p=document.getElementById('panel'); p.setAttribute('aria-labelledby','tab-'+state.tab); p.innerHTML=''; TABS[state.tab][1](); }
 document.getElementById('periods').onclick = e => { const p=e.target.dataset.p; if(p){ state.period=p; renderNav(); renderPanel(); } };
 document.getElementById('tabs').onclick = e => { const t=e.target.dataset.t; if(t){ state.tab=t; renderNav(); renderPanel(); } };
 document.getElementById('sumBtn').onclick = () => {
@@ -300,10 +306,10 @@ async function kpis(){
   const set = (id,v)=>document.getElementById(id).textContent=v;
   await Promise.all([
     // Solo la serie «Real»: el endpoint también trae Prevista y Programada.
-    ree('demanda/demanda-tiempo-real', today).then(d=>{const s=d.find(x=>/^real$/i.test(x.title)); if(!s) throw new Error('sin serie Real'); const u=settled(s), h=new Date(u.t); set('kDem', nf(u.v)); set('kDemU', `MW · ${pad(h.getHours())}:${pad(h.getMinutes())}`);}).catch(()=>ok=false),
+    ree('demanda/demanda-tiempo-real', today).then(d=>{const s=d.find(x=>/^real$/i.test(x.title)); if(!s) throw new Error('sin serie Real'); const u=settled(s), h=madrid(u.t); set('kDem', nf(u.v)); set('kDemU', `MW · ${pad(h.getHours())}:${pad(h.getMinutes())}`);}).catch(()=>ok=false),
     ree('generacion/evolucion-renovable-no-renovable', dayT).then(d=>{const r=d.find(s=>/^renovable/i.test(s.title)); set('kRen', r? nf((last(r).p??0)*100,1):'–');}).catch(()=>ok=false),
-    ree('generacion/no-renovables-detalle-emisiones-CO2', dayT).then(d=>{const t=d.find(s=>/total/i.test(s.title))||null; set('kCo2', nf(t?sum(t):d.reduce((a,s)=>a+sum(s),0)));}).catch(()=>ok=false),
-    ree('mercados/precios-mercados-tiempo-real', today).then(d=>{const s=d.find(x=>/PVPC/i.test(x.title))||d[0]; set('kPre', nf(last(s).v,1)); document.getElementById('kPreU').textContent=`€/MWh · ${s.title}`;}).catch(()=>ok=false)
+    ree('generacion/no-renovables-detalle-emisiones-CO2', dayT).then(d=>{const t=d.find(s=>/total/i.test(s.title))||null; set('kCo2', nf(t?sum(t):d.filter(s=>!/MWh/.test(s.title)).reduce((a,s)=>a+sum(s),0)));}).catch(()=>ok=false),
+    ree('mercados/precios-mercados-tiempo-real', today).then(d=>{const s=d.find(x=>/PVPC/i.test(x.title))||d[0]; set('kPre', nf(current(s).v,1)); document.getElementById('kPreU').textContent=`€/MWh · ${s.title}`;}).catch(()=>ok=false)
   ]);
   document.getElementById('status').innerHTML = ok ? `<span class="dot"></span>EN VIVO · ${pad(new Date().getHours())}:${pad(new Date().getMinutes())}` : `<span class="dot err"></span>DATOS PARCIALES`;
   document.getElementById('upd').textContent = 'actualizado ' + new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
@@ -315,7 +321,9 @@ async function summary(){
     const r = await fetch('resumenes/latest.json',{cache:'no-store'}); if(!r.ok) throw 0;
     const j = await r.json();
     document.getElementById('sumText').textContent = j.texto;
-    document.getElementById('sumMeta').textContent = `Resumen IA · ${j.fecha} · publicado ${j.publicado||''}`;
+    const alDia = j.fecha === ayerEs();
+    if(!alDia) document.getElementById('sumTitle').textContent = 'ÚLTIMO RESUMEN';
+    document.getElementById('sumMeta').textContent = alDia ? `Resumen IA · ${j.fecha} · publicado ${j.publicado||''}` : `Resumen del ${j.fecha} (aún no se ha publicado el de ayer)`;
   }catch(e){ /* sin resumen todavía */ }
 }
 

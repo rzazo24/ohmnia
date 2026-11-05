@@ -40,7 +40,7 @@ Dashboard del sistema eléctrico español con datos de [REData](https://www.ree.
 
 ## Resumen diario
 
-Vercel Cron funciona en UTC, así que hay dos entradas (08:30 y 09:30 UTC) y la función solo actúa cuando en Madrid es la hora 10. Así se cubre el cambio de horario.
+Vercel Cron funciona en UTC, así que hay tres entradas (08:30, 09:30 y 10:30 UTC). La función actúa cuando en Madrid es la hora 10, lo que cubre el cambio de horario, y a las 11 y a las 12 reintenta solo si el resumen de ayer aún no existe.
 
 Para lanzarlo a mano:
 
@@ -48,7 +48,7 @@ Para lanzarlo a mano:
 curl -H "Authorization: Bearer $CRON_SECRET" "https://TU-DOMINIO/api/cron/resumen?force=1"
 ```
 
-El campo `fallos` de la respuesta lista las fuentes que no devolvieron datos. Si no responde ninguna, no se sobrescribe el resumen anterior.
+El campo `fallos` de la respuesta lista las fuentes que no devolvieron datos. Si faltan la demanda o la generación, no se publica y se conserva el resumen anterior.
 
 ## Desarrollo local
 
@@ -63,7 +63,6 @@ Con este servidor funciona la web, pero no las funciones de `api/`, así que el 
 Cada endpoint admite solo ciertas granularidades y rangos, y varios no responden con datos del día en curso. Por eso algunos bloques muestran el dato de ayer o del mes anterior, indicado en su título.
 
 - El último punto de la demanda real es provisional, así que se muestra el penúltimo.
-- `generacion/potencia-instalada` devolvía un error 500 en todas las pruebas, por lo que su bloque puede aparecer como no disponible.
 - El resumen usa los intercambios programados, porque los físicos dan error por días.
 
 ## Licencia

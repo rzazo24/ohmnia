@@ -6,8 +6,8 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "latest",
-    "@vercel/blob": "latest"
+    "@anthropic-ai/sdk": "1.5.0",
+    "@vercel/blob": "2.8.2"
   },
   "scripts": {
     "test": "node --test --experimental-test-module-mocks \"test/*.test.js\""

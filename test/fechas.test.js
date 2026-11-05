@@ -9,7 +9,7 @@ const ini = html.indexOf('const pad ='), fin = html.indexOf('/* ---------- API')
 assert.ok(ini > 0 && fin > ini, 'no se encuentra el bloque de periodos en index.html');
 const fns = now => {
   const ctx = { Date: class extends Date { constructor(...a) { a.length ? super(...a) : super(now); } } };
-  vm.runInNewContext(html.slice(ini, fin) + ';this.f={range,yesterday,lastMonth,closedMonths};', ctx);
+  vm.runInNewContext(html.slice(ini, fin) + ';this.f={range,yesterday,lastMonth,closedMonths,ayerEs,current};', ctx);
   return ctx.f;
 };
 afterEach(() => mock.timers.reset());
@@ -29,6 +29,17 @@ test('lastMonth funciona el día 31 y en años bisiestos', () => {
   const r = fns(new Date(2028, 2, 31, 12)).lastMonth();
   assert.equal(r.start, '2028-02-01T00:00');
   assert.equal(r.end, '2028-02-29T23:59');
+});
+
+test('ayerEs usa el formato que guarda el cron', () => {
+  assert.equal(fns(new Date(2026, 10, 1, 12)).ayerEs(), '31/10/2026');
+});
+
+test('current ignora los valores futuros', () => {
+  const n = Date.now(), v = d => ({ v: d, t: new Date(n + d * 3600e3).toISOString() });
+  const f = fns(new Date(2026, 10, 5, 12));
+  assert.equal(f.current({ values: [v(-2), v(-1), v(1), v(2)] }).v, -1);
+  assert.equal(f.current({ values: [v(1), v(2)] }).v, 2);
 });
 
 test('closedMonths empieza en enero', () => {

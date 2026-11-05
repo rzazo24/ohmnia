@@ -40,7 +40,7 @@ Comportamiento comprobado:
 | `transporte/kilometros-lineas` | `year` cerrado, varios `month` cerrados | un solo mes, año en curso |
 | `mercados/precios-mercados-tiempo-real` | `hour` en rangos de un mes | `day` y `month`; `hour` de enero a octubre |
 | `mercados/coste-servicios-ajuste`, `energia-gestionada-servicios-ajuste` | varios `month` cerrados | `day` |
-| `generacion/potencia-instalada` | | 500 en todas las pruebas |
+| `generacion/potencia-instalada` | | 500 en todas las pruebas; retirado de la web |
 | `mercados/componentes-precio` | | `day`, `month` y `year`; retirado de la web |
 
 Otros detalles:
@@ -51,14 +51,15 @@ Otros detalles:
 
 ## Convenciones
 
-- Si un bloque muestra otro periodo que el elegido, el título lo indica: «(ayer)», «(mes anterior)» o «(mes en curso)».
+- Si un bloque muestra otro periodo que el elegido, el título lo indica: «(ayer)», «(mes anterior)», «(mes en curso)» o «(año en curso)».
 - No uses `sw.js` para cachear datos de REData, para no mostrar cifras antiguas como actuales.
-- El cron no debe sobrescribir el resumen anterior si falla.
+- El cron no debe sobrescribir el resumen anterior si falla o si faltan la demanda o la generación.
+- Las fechas de la web se calculan en Europe/Madrid (`madrid()`), no en la hora local del usuario.
 - El resumen se publica sin revisión humana: el prompt exige usar solo cifras presentes en los datos.
 
 ## Despliegue
 
 - Cada push a `main` despliega a producción, aunque los tests fallen: el GitHub Action solo avisa. Pregunta antes de hacer push.
-- Vercel Cron va en UTC: hay dos entradas (08:30 y 09:30) y la función solo actúa cuando en Madrid es la hora 10. `?force=1` salta esa comprobación.
+- Vercel Cron va en UTC: hay tres entradas (08:30, 09:30 y 10:30). La función actúa cuando en Madrid es la hora 10 y, a las 11 y a las 12, solo si no existe el resumen de ayer. `?force=1` salta esas comprobaciones.
 - El Blob store es privado, así que usa `access: 'private'`. La autenticación va por `BLOB_STORE_ID` y OIDC, sin `BLOB_READ_WRITE_TOKEN`.
 - Las variables de entorno nuevas solo se aplican tras volver a desplegar.

@@ -1,7 +1,8 @@
 // Cron diario: descarga los datos de ayer de REData, pide un resumen a Claude y lo guarda en Vercel Blob.
-// Vercel Cron va en UTC: se dispara a las 08:30 y 09:30 UTC y solo se ejecuta cuando en Madrid son las 10.
+// Vercel Cron va en UTC (08:30, 09:30 y 10:30): se ejecuta a las 10 de Madrid y, a las 11 y a las 12,
+// reintenta solo si el resumen de ayer aún no existe.
 import Anthropic from '@anthropic-ai/sdk';
-import { put } from '@vercel/blob';
+import { get, put } from '@vercel/blob';
 
 const BASE = 'https://apidatos.ree.es/es/datos';
 const TZ = 'Europe/Madrid';
@@ -18,6 +19,9 @@ const FUENTES = [
   ['intercambios/todas-fronteras-programados', 'day'], // los físicos dan error por días
   ['mercados/precios-mercados-tiempo-real', 'hour'],
 ];
+
+// Sin estos datos el resumen quedaría cojo: mejor no publicar y conservar el anterior.
+const OBLIGATORIAS = ['demanda/evolucion', 'generacion/estructura-generacion'];
 
 const partes = (d, opts) =>
   Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hourCycle: 'h23', ...opts })
@@ -77,21 +81,28 @@ async function ejecutar(req, res) {
   if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'no autorizado' });
   }
-  // Doble cron UTC (verano/invierno): solo seguimos cuando en Madrid es la hora 10. ?force=1 salta la guarda.
+  // ?force=1 salta las comprobaciones de horario.
   const ahora = partes(new Date(), { hour: '2-digit', minute: '2-digit' });
-  if (ahora.hour !== '10' && req.query.force !== '1') {
-    return res.status(200).json({ saltado: true, horaMadrid: `${ahora.hour}:${ahora.minute}` });
+  const ayer = ayerEnMadrid();
+  const horaMadrid = `${ahora.hour}:${ahora.minute}`;
+  if (req.query.force !== '1' && ahora.hour !== '10') {
+    if (!['11', '12'].includes(ahora.hour)) return res.status(200).json({ saltado: true, horaMadrid });
+    const previo = await get(`resumenes/${ayer.iso}.json`, { access: 'private', useCache: false });
+    if (previo) {
+      await previo.stream?.cancel();
+      return res.status(200).json({ saltado: true, horaMadrid, motivo: 'ya publicado' });
+    }
   }
 
-  const ayer = ayerEnMadrid();
   const resultados = await Promise.allSettled(FUENTES.map(([ruta, t]) => descargar(ruta, t, ayer.iso)));
   const datos = {}, fallos = [];
   resultados.forEach((r, i) => {
     const ruta = FUENTES[i][0];
     if (r.status === 'fulfilled' && r.value.length) datos[ruta] = r.value; else fallos.push(ruta);
   });
-  // Sin datos no pisamos el resumen anterior.
-  if (Object.keys(datos).length === 0) return res.status(502).json({ error: 'REData sin datos', fallos });
+  // Con datos incompletos no pisamos el resumen anterior.
+  const faltan = OBLIGATORIAS.filter(r => !datos[r]);
+  if (faltan.length) return res.status(502).json({ error: 'faltan datos obligatorios de REData', faltan, fallos });
 
   const client = new Anthropic(); // ANTHROPIC_API_KEY del entorno
   const msg = await client.beta.messages.create({
@@ -99,8 +110,8 @@ async function ejecutar(req, res) {
     max_tokens: 4000,
     system: SYSTEM,
     output_config: { effort: 'low' },
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
+    // Haiku no admite el fallback de servidor.
+    ...(/haiku/.test(MODEL) ? {} : { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' }),
     messages: [{ role: 'user', content: `Fecha de los datos: ${ayer.es}\n\n${JSON.stringify(datos)}` }],
   });
   if (msg.stop_reason === 'refusal') return res.status(502).json({ error: 'Claude rechazó la petición', detalle: msg.stop_details });
@@ -112,5 +123,5 @@ async function ejecutar(req, res) {
   await put('resumenes/latest.json', cuerpo, opts);
   await put(`resumenes/${ayer.iso}.json`, cuerpo, opts); // histórico
 
-  return res.status(200).json({ ok: true, fecha: ayer.es, palabras: texto.split(/\s+/).length, fallos });
+  return res.status(200).json({ ok: true, fecha: ayer.es, palabras: texto.split(/\s+/).length, fallos, modelo: msg.model, uso: msg.usage });
 }

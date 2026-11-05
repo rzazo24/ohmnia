@@ -3,9 +3,16 @@ import assert from 'node:assert/strict';
 import { fakeRes } from './helpers.js';
 
 const puts = [];
-let respuesta;
-mock.module('@vercel/blob', { exports: { put: async (ruta, cuerpo, opts) => { puts.push({ ruta, cuerpo, opts }); } } });
-mock.module('@anthropic-ai/sdk', { exports: { default: class { beta = { messages: { create: async () => respuesta } }; } } });
+let respuesta, existe;
+// Node 24 usa `exports`; Node 22 aún necesita `namedExports` y `defaultExport`.
+const moderno = Number(process.versions.node.split('.')[0]) >= 24;
+const claude = class { beta = { messages: { create: async () => respuesta } }; };
+const blob = {
+  get: async () => (existe ? { statusCode: 200, stream: null } : null),
+  put: async (ruta, cuerpo, opts) => { puts.push({ ruta, cuerpo, opts }); },
+};
+mock.module('@vercel/blob', moderno ? { exports: blob } : { namedExports: blob });
+mock.module('@anthropic-ai/sdk', moderno ? { exports: { default: claude } } : { defaultExport: claude });
 const { default: handler, ayerEnMadrid, resumirSeries } = await import('../api/cron/resumen.js');
 
 const realFetch = globalThis.fetch;
@@ -16,6 +23,7 @@ const ahora = iso => mock.timers.enable({ apis: ['Date'], now: new Date(iso).get
 beforeEach(() => {
   process.env.CRON_SECRET = 's3creto';
   puts.length = 0;
+  existe = true;
   respuesta = { stop_reason: 'end_turn', model: 'm', content: [{ type: 'text', text: 'Resumen de prueba' }] };
   globalThis.fetch = async () => new Response(JSON.stringify(datos), { status: 200 });
 });
@@ -52,6 +60,42 @@ test('en verano se ejecuta a las 08:30 UTC y salta las 09:30', async () => {
   res = fakeRes(); await handler(req(), res);
   assert.equal(res.body.ok, true);
 });
+
+test('a las 11 y a las 12 reintenta solo si el resumen de ayer no existe', async () => {
+  ahora('2026-07-15T09:30:00Z'); // 11:30 en Madrid
+  existe = false;
+  let res = fakeRes(); await handler(req(), res);
+  assert.equal(res.body.ok, true);
+  mock.timers.reset(); ahora('2026-07-15T10:30:00Z'); // 12:30 en Madrid
+  puts.length = 0; existe = true;
+  res = fakeRes(); await handler(req(), res);
+  assert.equal(res.body.motivo, 'ya publicado');
+  assert.equal(puts.length, 0);
+});
+
+test('fuera de la ventana no actúa aunque falte el resumen', async () => {
+  ahora('2026-07-15T12:30:00Z'); // 14:30 en Madrid
+  existe = false;
+  const res = fakeRes(); await handler(req(), res);
+  assert.equal(res.body.saltado, true);
+});
+
+test('force=1 ignora el horario', async () => {
+  ahora('2026-07-15T02:00:00Z');
+  const res = fakeRes(); await handler(req({ force: '1' }), res);
+  assert.equal(res.body.ok, true);
+});
+
+for (const ruta of ['demanda/evolucion', 'generacion/estructura-generacion']) {
+  test(`no publica si falta ${ruta}`, async () => {
+    ahora('2026-11-05T09:30:00Z');
+    globalThis.fetch = async u => (String(u).includes(ruta) ? new Response('{}', { status: 400 }) : new Response(JSON.stringify(datos)));
+    const res = fakeRes(); await handler(req(), res);
+    assert.equal(res.statusCode, 502);
+    assert.deepEqual(res.body.faltan, [ruta]);
+    assert.equal(puts.length, 0);
+  });
+}
 
 test('guarda latest e histórico en privado con el formato que lee la web', async () => {
   ahora('2026-11-05T09:30:00Z');
