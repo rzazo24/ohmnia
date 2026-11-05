@@ -62,7 +62,7 @@ async function descargar(ruta, trunc, dia) {
 const SYSTEM = `Eres analista del sistema eléctrico español y redactas el resumen diario de un dashboard público.
 Recibirás estadísticos de REData (Red Eléctrica) del día anterior. Escribe un único párrafo en español de unas 150 palabras (entre 130 y 170), sin títulos, listas ni markdown.
 Cubre lo más relevante: demanda (total del día, y pico y valle en MW, que son el max y el min de la serie «Real» de demanda-tiempo-real; ignora sus series Prevista y Programada y no cites horas), mix de generación y peso de las renovables, emisiones de CO₂, intercambios internacionales (son programados, no físicos: dilo así) y precios de mercado.
-Usa solo cifras presentes en los datos, con sus unidades; no inventes ni extrapoles. Si falta algún bloque de datos, no lo menciones. Tono sobrio y periodístico.`;
+Usa solo cifras presentes en los datos, con sus unidades; no inventes ni extrapoles. No calcules ratios ni porcentajes propios; los saldos de intercambios son la única suma permitida. No indiques ámbito geográfico (peninsular, nacional) salvo que aparezca en los datos. Si falta algún bloque de datos, no lo menciones. Tono sobrio y periodístico.`;
 
 export default async function handler(req, res) {
   try {
