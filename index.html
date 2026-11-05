@@ -45,7 +45,12 @@ svg{display:block;width:100%}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--txt2)}
 footer{font-family:var(--mono);font-size:11px;color:var(--mute);border-top:1px solid var(--line);padding-top:12px}
 @media (min-width:640px){.tabs{grid-template-columns:repeat(6,minmax(0,1fr))}.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
-.help summary{cursor:pointer;font-size:14px;font-weight:600;letter-spacing:.04em}
+.helpBtn{flex:none;width:28px;height:28px;padding:0;border:1px solid var(--line);border-radius:50%;background:transparent;color:var(--blue);font:600 14px/1 var(--mono);cursor:pointer}
+.helpBtn:hover,.helpBtn:focus-visible{border-color:var(--blue)}
+dialog.help{width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;color:var(--txt);margin:auto}
+dialog.help:not([open]){display:none}
+dialog.help::backdrop{background:rgba(0,0,0,.65)}
+.helpHead{display:flex;justify-content:space-between;align-items:center;font-size:14px;letter-spacing:.04em}
 .help h3{font-size:13px;margin:16px 0 4px}
 .help p,.help li{font-size:13px;line-height:1.5;color:var(--txt2)}
 .help p{margin:0 0 6px}.help ul{margin:0;padding-left:18px}
@@ -56,7 +61,7 @@ footer{font-family:var(--mono);font-size:11px;color:var(--mute);border-top:1px s
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><span id="status"><span class="dot"></span>CARGANDO…</span></div>
+  <div class="top"><span id="status"><span class="dot"></span>CARGANDO…</span><button id="helpBtn" class="helpBtn" type="button" aria-label="Abrir ayuda" title="Ayuda">?</button></div>
   <div>
     <h1>Ohmn<span>IA</span></h1>
     <div class="tag">La red eléctrica, explicada cada día</div>
@@ -84,8 +89,8 @@ footer{font-family:var(--mono);font-size:11px;color:var(--mute);border-top:1px s
   <nav class="grid3 tabs" role="tablist" aria-label="Categorías" id="tabs"></nav>
   <main id="panel" style="display:flex;flex-direction:column;gap:12px"></main>
 
-  <details class="card help">
-    <summary>AYUDA</summary>
+  <dialog id="help" class="card help" aria-labelledby="helpT">
+    <div class="helpHead"><strong id="helpT">AYUDA</strong><button id="helpClose" class="helpBtn" type="button" aria-label="Cerrar ayuda">×</button></div>
     <h3>Indicadores</h3>
     <ul>
       <li><strong>Demanda:</strong> potencia demandada en MW, con la hora del dato. Se muestra el penúltimo valor porque el último es provisional.</li>
@@ -109,7 +114,7 @@ footer{font-family:var(--mono);font-size:11px;color:var(--mute);border-top:1px s
     <h3>Si un bloque no carga</h3>
     <p>«No disponible» significa que REData no ha devuelto ese dato. El resto de la página sigue funcionando; prueba más tarde. «DATOS PARCIALES» indica que falló algún indicador.</p>
     <p>Los datos son de Red Eléctrica y pueden ser provisionales. OhmnIA es un proyecto independiente.</p>
-  </details>
+  </dialog>
   <footer>FUENTE: Red Eléctrica · REData (apidatos.ree.es) · <span id="upd"></span></footer>
 </div>
 
@@ -291,6 +296,11 @@ async function summary(){
     document.getElementById('sumMeta').textContent = `Resumen IA · ${j.fecha} · publicado ${j.publicado||''}`;
   }catch(e){ /* sin resumen todavía */ }
 }
+
+const help=document.getElementById('help');
+document.getElementById('helpBtn').onclick=()=>help.showModal();
+document.getElementById('helpClose').onclick=()=>help.close();
+help.onclick=e=>{ if(e.target===help) help.close(); }; // clic en el fondo
 
 renderNav(); renderPanel(); kpis(); summary();
 setInterval(()=>{ cache.clear(); kpis(); if(state.period==='hoy') renderPanel(); }, 10*60*1000);
