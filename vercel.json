@@ -1,0 +1,12 @@
+{
+  "crons": [
+    { "path": "/api/cron/resumen", "schedule": "30 8 * * *" },
+    { "path": "/api/cron/resumen", "schedule": "30 9 * * *" }
+  ],
+  "functions": {
+    "api/cron/resumen.js": { "maxDuration": 120 }
+  },
+  "rewrites": [
+    { "source": "/resumenes/latest.json", "destination": "/api/resumen" }
+  ]
+}
