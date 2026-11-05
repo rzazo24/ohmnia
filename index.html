@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>OhmnIA</title>
 <meta name="description" content="La red eléctrica española, explicada cada día. Datos de Red Eléctrica (REData).">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -12,7 +12,7 @@
 body{margin:0;background:var(--bg);color:var(--txt);font-family:'IBM Plex Sans',sans-serif}
 a{color:var(--blue)}a:hover{color:#B5DDF7}
 button{font:inherit;cursor:pointer}
-.wrap{max-width:720px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:16px}
+.wrap{max-width:720px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));display:flex;flex-direction:column;gap:16px}
 .top{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:12px;color:var(--mute)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:8px}
 .dot.err{background:var(--orange)}
@@ -47,7 +47,7 @@ footer{font-family:var(--mono);font-size:11px;color:var(--mute);border-top:1px s
 @media (min-width:640px){.tabs{grid-template-columns:repeat(6,minmax(0,1fr))}.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .helpBtn{flex:none;width:28px;height:28px;padding:0;border:1px solid var(--line);border-radius:50%;background:transparent;color:var(--blue);font:600 14px/1 var(--mono);cursor:pointer}
 .helpBtn:hover,.helpBtn:focus-visible{border-color:var(--blue)}
-dialog.help{width:min(688px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 32px);overflow:auto;color:var(--txt);margin:auto}
+dialog.help{width:min(688px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;color:var(--txt);margin:auto}
 dialog.help:not([open]){display:none}
 dialog.help::backdrop{background:rgba(0,0,0,.65)}
 .helpHead{display:flex;justify-content:space-between;align-items:center;font-size:14px;letter-spacing:.04em}
@@ -59,10 +59,19 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
 ::-webkit-scrollbar-thumb:hover{background:var(--mute)}
+.update{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));width:min(688px,calc(100vw - 32px));display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;background:var(--card);border:1px solid var(--blue);border-radius:6px;font-size:14px;z-index:10}
+.update[hidden]{display:none}
+.update button{flex:none;min-height:36px;padding:0 12px;border:0;border-radius:6px;background:var(--blue);color:var(--bg);font-weight:600;cursor:pointer}
 </style>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0D1014">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="OhmnIA">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 <div class="wrap">
@@ -116,11 +125,14 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
     </ul>
     <h3>Resumen diario</h3>
     <p>«Ayer en la red» es un texto generado por IA cada mañana con los datos del día anterior. Se publica sin revisión humana y puede contener errores, así que comprueba las cifras importantes en los bloques o en REData.</p>
+    <h3>Instalar en el iPhone</h3>
+    <p>Abre la web en Safari, pulsa Compartir y elige «Añadir a pantalla de inicio».</p>
     <h3>Si un bloque no carga</h3>
     <p>«No disponible» significa que REData no ha devuelto ese dato. El resto de la página sigue funcionando; prueba más tarde. «DATOS PARCIALES» indica que falló algún indicador.</p>
     <p>Los datos son de Red Eléctrica y pueden ser provisionales. OhmnIA es un proyecto independiente.</p>
     <p><a href="https://github.com/rzazo24/ohmnia" target="_blank" rel="noopener noreferrer" style="color:var(--blue)">Código en GitHub</a></p>
   </dialog>
+  <div id="update" class="update" role="status" hidden><span>Hay una versión nueva de la app</span><button id="updateBtn" type="button">Actualizar</button></div>
   <footer>FUENTE: Red Eléctrica · REData (apidatos.ree.es) · <span id="upd"></span></footer>
 </div>
 
@@ -302,6 +314,22 @@ async function summary(){
     document.getElementById('sumMeta').textContent = `Resumen IA · ${j.fecha} · publicado ${j.publicado||''}`;
   }catch(e){ /* sin resumen todavía */ }
 }
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});
+/* ---------- aviso de versión nueva ---------- */
+let appVersion = null;
+async function checkVersion(){
+  try{
+    const r = await fetch('/api/version',{cache:'no-store'}); if(!r.ok) return;
+    const {version} = await r.json(); if(!version) return;
+    if(!appVersion) appVersion = version;
+    else if(version !== appVersion) document.getElementById('update').hidden = false;
+  }catch(e){ /* sin conexión: se comprobará más tarde */ }
+}
+document.getElementById('updateBtn').onclick = () => location.reload();
+document.addEventListener('visibilitychange', () => { if(!document.hidden) checkVersion(); }); // al volver a la app en el iPhone
+setInterval(checkVersion, 10*60*1000);
+checkVersion();
 
 const help=document.getElementById('help');
 document.getElementById('helpBtn').onclick=()=>help.showModal();
