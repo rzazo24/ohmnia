@@ -65,6 +65,15 @@ Cubre lo más relevante: demanda (total del día, y pico y valle en MW, que son 
 Usa solo cifras presentes en los datos, con sus unidades; no inventes ni extrapoles. Si falta algún bloque de datos, no lo menciones. Tono sobrio y periodístico.`;
 
 export default async function handler(req, res) {
+  try {
+    return await ejecutar(req, res);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: String(e.message || e) });
+  }
+}
+
+async function ejecutar(req, res) {
   if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'no autorizado' });
   }
@@ -99,7 +108,7 @@ export default async function handler(req, res) {
   if (!texto) return res.status(502).json({ error: 'respuesta vacía', stop_reason: msg.stop_reason });
 
   const cuerpo = JSON.stringify({ texto, fecha: ayer.es, publicado: `${ahora.hour}:${ahora.minute}`, modelo: msg.model, fuentes_sin_datos: fallos });
-  const opts = { access: 'public', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json', cacheControlMaxAge: 60 };
+  const opts = { access: 'private', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json', cacheControlMaxAge: 60 };
   await put('resumenes/latest.json', cuerpo, opts);
   await put(`resumenes/${ayer.iso}.json`, cuerpo, opts); // histórico
 
