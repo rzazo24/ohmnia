@@ -47,13 +47,18 @@ footer{font-family:var(--mono);font-size:11px;color:var(--mute);border-top:1px s
 @media (min-width:640px){.tabs{grid-template-columns:repeat(6,minmax(0,1fr))}.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .helpBtn{flex:none;width:28px;height:28px;padding:0;border:1px solid var(--line);border-radius:50%;background:transparent;color:var(--blue);font:600 14px/1 var(--mono);cursor:pointer}
 .helpBtn:hover,.helpBtn:focus-visible{border-color:var(--blue)}
-dialog.help{width:min(560px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;color:var(--txt);margin:auto}
+dialog.help{width:min(688px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 32px);overflow:auto;color:var(--txt);margin:auto}
 dialog.help:not([open]){display:none}
 dialog.help::backdrop{background:rgba(0,0,0,.65)}
 .helpHead{display:flex;justify-content:space-between;align-items:center;font-size:14px;letter-spacing:.04em}
 .help h3{font-size:13px;margin:16px 0 4px}
 .help p,.help li{font-size:13px;line-height:1.5;color:var(--txt2)}
 .help p{margin:0 0 6px}.help ul{margin:0;padding-left:18px}
+*{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--mute)}
 </style>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
