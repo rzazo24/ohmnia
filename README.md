@@ -2,6 +2,8 @@
 
 Dashboard del sistema eléctrico español con datos de [REData](https://www.ree.es/es/apidatos) (Red Eléctrica) y un resumen diario generado con la API de Claude. Se despliega en Vercel.
 
+**Web:** [ohmnia.vercel.app](https://ohmnia.vercel.app/)
+
 ## Qué incluye
 
 - **Seis pestañas:** Balance, Demanda, Generación, Intercambios, Red y Mercados.
