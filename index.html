@@ -93,8 +93,7 @@ function range(p){
   const now = new Date(), s = new Date(now);
   if(p==='hoy'){ s.setHours(0,0,0,0); return {start:iso(s), end:iso(now), trunc:'hour'}; }
   if(p==='mes'){ s.setDate(1); s.setHours(0,0,0,0); return {start:iso(s), end:iso(now), trunc:'day'}; }
-  if(p==='anio'){ s.setMonth(0,1); s.setHours(0,0,0,0); return {start:iso(s), end:iso(now), trunc:'month'}; }
-  s.setFullYear(now.getFullYear()-5, 0, 1); s.setHours(0,0,0,0); return {start:iso(s), end:iso(now), trunc:'year'};
+  s.setMonth(0,1); s.setHours(0,0,0,0); return {start:iso(s), end:iso(now), trunc:'month'};
 }
 function yesterday(){ const s=new Date(); s.setDate(s.getDate()-1); s.setHours(0,0,0,0); const e=new Date(s); e.setHours(23,59,0,0); return {start:iso(s), end:iso(e), trunc:'day'}; }
 function lastMonth(){ const n=new Date(), s=new Date(n.getFullYear(),n.getMonth()-1,1), e=new Date(n.getFullYear(),n.getMonth(),0,23,59); return {start:iso(s), end:iso(e), trunc:'month'}; }
@@ -149,7 +148,7 @@ function lineChart(list, h=130){
   const x=t=> t1===t0?W/2:(+new Date(t)-t0)/(t1-t0)*W, y=v=> h-6-((v-min)/((max-min)||1))*(h-12);
   const paths=list.map((s,i)=>`<path d="${s.values.map((v,j)=>(j?'L':'M')+x(v.t).toFixed(1)+','+y(v.v).toFixed(1)).join(' ')}" fill="none" stroke="${colorOf(s,i)}" stroke-width="2"/>`).join('');
   return `<svg viewBox="0 0 ${W} ${h}" role="img" aria-label="Gráfico de líneas"><g stroke="#232930"><line x1="0" y1="${h/3}" x2="${W}" y2="${h/3}"/><line x1="0" y1="${2*h/3}" x2="${W}" y2="${2*h/3}"/></g>${paths}</svg>
-  <div class="meta" style="display:flex;justify-content:space-between"><span>${label(t0)}</span><span>máx ${nf(max)}</span><span>${label(t1)}</span></div>`;
+  <div class="meta" style="display:flex;justify-content:space-between"><span>${label(t0,t1-t0)}</span><span>máx ${nf(max)}</span><span>${label(t1,t1-t0)}</span></div>`;
 }
 function stackBars(list, h=130){
   const n=Math.max(...list.map(s=>s.values.length)); if(!n) return '';
@@ -158,7 +157,8 @@ function stackBars(list, h=130){
   return `<svg viewBox="0 0 ${W} ${h}" role="img" aria-label="Barras apiladas">${r}</svg>`;
 }
 function legend(list){ return `<div class="legend">${list.map((s,i)=>`<span><span class="sw" style="background:${colorOf(s,i)}"></span>${esc(s.title)}</span>`).join('')}</div>`; }
-function label(t){ if(!t) return ''; const d=new Date(t); return state.period==='hoy'?pad(d.getHours())+'h':state.period==='mes'?d.getDate()+'/'+(d.getMonth()+1):state.period==='anio'?d.toLocaleDateString('es-ES',{month:'short'}):d.getFullYear(); }
+// El formato depende del tramo que abarca el gráfico, no del periodo elegido: algunos bloques muestran otro rango.
+function label(t, span){ if(!t) return ''; const d=new Date(t), D=864e5; return span<=2*D?pad(d.getHours())+'h':span<=62*D?d.getDate()+'/'+(d.getMonth()+1):span<=400*D?d.toLocaleDateString('es-ES',{month:'short'}):d.getFullYear(); }
 function rows(list, fmt){ return list.map((s,i)=>`<div class="row"><span><span class="sw" style="background:${colorOf(s,i)}"></span>${esc(s.title)}</span><span>${fmt(s)}</span></div>`).join(''); }
 
 /* ---------- bloques ---------- */
@@ -180,7 +180,7 @@ const TABS = {
     else block('Evolución de la demanda','demanda/evolucion', d=>lineChart(d)+rows(d,s=>energy(sum(s))));
     // Solo admite time_trunc=month y devuelve energía (el día de mayor demanda del mes), no potencia.
     block('Día de máxima demanda (mes anterior)','demanda/demanda-maxima-diaria', d=>rows(d,s=>energy(Math.max(...s.values.map(v=>v.v)))), lastMonth());
-    block('Demanda por sector (IRE)','demanda/ire-general', d=>rows(d,s=>nf(last(s).v,1)), range(state.period==='hoy'?'anio':state.period));
+    block('Demanda por sector (IRE)','demanda/ire-general', d=>rows(d,s=>nf(last(s).v,1)), range('anio')); // índice mensual: no admite datos por días
   }],
   generacion: ['Generación', () => {
     // Con «Hoy» se muestra el dato diario de ayer: estos endpoints no responden por horas.
@@ -188,26 +188,29 @@ const TABS = {
     block(t('Generación por tecnología'),'generacion/estructura-generacion', d=>{const main=d.filter(s=>!/total/i.test(s.title)); return stackBars(main)+legend(main)+rows(main,s=>energy(sum(s)));}, r);
     block(t('Renovable vs no renovable'),'generacion/evolucion-renovable-no-renovable', d=>(hoy?'':lineChart(d))+rows(d,s=>energy(sum(s))), r);
     block(t('Emisiones de CO₂'),'generacion/no-renovables-detalle-emisiones-CO2', d=>rows(d,s=>nf(sum(s))+' t'), r);
-    block('Potencia instalada','generacion/potencia-instalada', d=>rows(d.filter(s=>!/total/i.test(s.title)),s=>nf(last(s).v)+' MW'), range(state.period==='hist'?'hist':'anio'));
+    block('Potencia instalada','generacion/potencia-instalada', d=>rows(d.filter(s=>!/total/i.test(s.title)),s=>nf(last(s).v)+' MW'), range('anio'));
   }],
   intercambios: ['Intercambios', () => {
     // Con «Hoy» se muestra el dato diario de ayer.
     const hoy=state.period==='hoy', r=hoy?yesterday():null, t=x=>hoy?x+' (ayer)':x;
-    // Los físicos de ayer por días dan error; con «Hoy» se muestra el último mes cerrado.
-    block(hoy?'Intercambios físicos por frontera (mes anterior)':'Intercambios físicos por frontera','intercambios/todas-fronteras-fisicos', d=>rows(d,s=>energy(sum(s))), hoy?lastMonth():null);
+    // Los físicos por días dan error; con «Hoy» y «Mes» se muestra el último mes cerrado.
+    const cerrado=hoy||state.period==='mes';
+    block(cerrado?'Intercambios físicos por frontera (mes anterior)':'Intercambios físicos por frontera','intercambios/todas-fronteras-fisicos', d=>rows(d,s=>energy(sum(s))), cerrado?lastMonth():null);
     block(t('Enlace con Baleares'),'intercambios/enlace-baleares', d=>rows(d,s=>energy(sum(s))), r);
   }],
   transporte: ['Red', () => {
-    const r = range(state.period==='hist'?'hist':'anio'); r.trunc = state.period==='hist'?'year':'month';
+    const r = range('anio');
     block('Energía no suministrada y TIM','transporte/ens-tim', d=>rows(d,s=>nf(sum(s),1)), r);
     block('Número de cortes','transporte/numero-cortes', d=>rows(d,s=>nf(sum(s))), r);
     block('Índice de disponibilidad','transporte/indice-disponibilidad', d=>rows(d,s=>nf(last(s).v,2)+' %'), r);
     block('Kilómetros de líneas (mes anterior)','transporte/kilometros-lineas', d=>rows(d,s=>nf(last(s).v)+' km'), closedMonths());
   }],
   mercados: ['Mercados', () => {
-    block('Precios de mercado','mercados/precios-mercados-tiempo-real', d=>lineChart(d)+legend(d)+rows(d,s=>{const v=s.values.map(x=>x.v);return `${nf(Math.min(...v),1)} · ${nf(v.reduce((a,b)=>a+b,0)/v.length,1)} · ${nf(Math.max(...v),1)}`;}));
-    const hoy=state.period==='hoy';
-    // Estos dos solo responden por meses cerrados: con «Hoy» se muestra el último (último valor de la serie).
+    // Este endpoint solo responde por horas y en rangos cortos: con «Año» se muestra el mes en curso.
+    const preciosMes=state.period==='anio';
+    block(preciosMes?'Precios de mercado (mes en curso)':'Precios de mercado','mercados/precios-mercados-tiempo-real', d=>lineChart(d)+legend(d)+rows(d,s=>{const v=s.values.map(x=>x.v);return `${nf(Math.min(...v),1)} · ${nf(v.reduce((a,b)=>a+b,0)/v.length,1)} · ${nf(Math.max(...v),1)}`;}), state.period==='mes'||preciosMes?{...range('mes'),trunc:'hour'}:null);
+    const hoy=state.period==='hoy'||state.period==='mes';
+    // Estos dos solo responden por meses cerrados: con «Hoy» y «Mes» se muestra el último (último valor de la serie).
     const t2=x=>hoy?x+' (mes anterior)':x, rm=hoy?closedMonths():null;
     block(t2('Coste de servicios de ajuste'),'mercados/coste-servicios-ajuste', d=>rows(d,s=>nf(last(s).v,2)), rm);
     block(t2('Energía gestionada en servicios de ajuste'),'mercados/energia-gestionada-servicios-ajuste', d=>rows(d,s=>energy(hoy?last(s).v:sum(s))), rm);
@@ -216,7 +219,7 @@ const TABS = {
 
 /* ---------- estado y UI ---------- */
 const state = {tab:'balance', period:'hoy'};
-const PERIODS = [['hoy','Hoy'],['mes','Mes'],['anio','Año'],['hist','Hist.']];
+const PERIODS = [['hoy','Hoy'],['mes','Mes'],['anio','Año']];
 function renderNav(){
   document.getElementById('periods').innerHTML = PERIODS.map(([k,l])=>`<button data-p="${k}" aria-pressed="${k===state.period}">${l}</button>`).join('');
   document.getElementById('tabs').innerHTML = Object.entries(TABS).map(([k,[l]])=>`<button role="tab" data-t="${k}" aria-selected="${k===state.tab}">${l}</button>`).join('');
