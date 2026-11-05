@@ -23,13 +23,13 @@ const partes = (d, opts) =>
   Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hourCycle: 'h23', ...opts })
     .formatToParts(d).map(p => [p.type, p.value]));
 
-function ayerEnMadrid() {
+export function ayerEnMadrid() {
   const p = partes(new Date(Date.now() - 24 * 3600 * 1000), { year: 'numeric', month: '2-digit', day: '2-digit' });
   return { iso: `${p.year}-${p.month}-${p.day}`, es: `${p.day}/${p.month}/${p.year}` };
 }
 
 // Mismo aplanado que index.html, pero reduciendo cada serie a estadísticos para no inflar el prompt.
-function resumirSeries(json) {
+export function resumirSeries(json) {
   const out = [];
   const add = (o, grupo) => {
     const a = o.attributes || {};

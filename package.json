@@ -2,9 +2,14 @@
   "name": "ohmnia",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
     "@vercel/blob": "latest"
+  },
+  "scripts": {
+    "test": "node --test --experimental-test-module-mocks \"test/*.test.js\""
   }
 }
