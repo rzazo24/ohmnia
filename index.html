@@ -45,7 +45,14 @@ svg{display:block;width:100%}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--txt2)}
 footer{font-family:var(--mono);font-size:11px;color:var(--mute);border-top:1px solid var(--line);padding-top:12px}
 @media (min-width:640px){.tabs{grid-template-columns:repeat(6,minmax(0,1fr))}.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.help summary{cursor:pointer;font-size:14px;font-weight:600;letter-spacing:.04em}
+.help h3{font-size:13px;margin:16px 0 4px}
+.help p,.help li{font-size:13px;line-height:1.5;color:var(--txt2)}
+.help p{margin:0 0 6px}.help ul{margin:0;padding-left:18px}
 </style>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 </head>
 <body>
 <div class="wrap">
@@ -77,6 +84,32 @@ footer{font-family:var(--mono);font-size:11px;color:var(--mute);border-top:1px s
   <nav class="grid3 tabs" role="tablist" aria-label="Categorías" id="tabs"></nav>
   <main id="panel" style="display:flex;flex-direction:column;gap:12px"></main>
 
+  <details class="card help">
+    <summary>AYUDA</summary>
+    <h3>Indicadores</h3>
+    <ul>
+      <li><strong>Demanda:</strong> potencia demandada en MW, con la hora del dato. Se muestra el penúltimo valor porque el último es provisional.</li>
+      <li><strong>Renovable:</strong> porcentaje de la generación de hoy que procede de fuentes renovables.</li>
+      <li><strong>Emisiones:</strong> toneladas de CO₂ equivalente acumuladas hoy.</li>
+      <li><strong>Precio:</strong> último precio disponible en €/MWh.</li>
+    </ul>
+    <h3>Periodos</h3>
+    <p>Hoy, Mes y Año cambian el rango de la mayoría de los bloques. REData no ofrece todos los datos en todos los rangos, así que algunos bloques usan otro periodo, indicado en su título: «(ayer)», «(mes anterior)» o «(mes en curso)».</p>
+    <h3>Pestañas</h3>
+    <ul>
+      <li><strong>Balance:</strong> energía por fuente y consumo.</li>
+      <li><strong>Demanda:</strong> evolución, día de máxima demanda e índice de consumo (IRE).</li>
+      <li><strong>Generación:</strong> mezcla de tecnologías, renovables y emisiones.</li>
+      <li><strong>Intercambios:</strong> energía con otros países y enlace con Baleares.</li>
+      <li><strong>Red:</strong> calidad del servicio y kilómetros de líneas.</li>
+      <li><strong>Mercados:</strong> precios (mínimo · media · máximo) y servicios de ajuste.</li>
+    </ul>
+    <h3>Resumen diario</h3>
+    <p>«Ayer en la red» es un texto generado por IA cada mañana con los datos del día anterior. Se publica sin revisión humana y puede contener errores, así que comprueba las cifras importantes en los bloques o en REData.</p>
+    <h3>Si un bloque no carga</h3>
+    <p>«No disponible» significa que REData no ha devuelto ese dato. El resto de la página sigue funcionando; prueba más tarde. «DATOS PARCIALES» indica que falló algún indicador.</p>
+    <p>Los datos son de Red Eléctrica y pueden ser provisionales. OhmnIA es un proyecto independiente.</p>
+  </details>
   <footer>FUENTE: Red Eléctrica · REData (apidatos.ree.es) · <span id="upd"></span></footer>
 </div>
 
