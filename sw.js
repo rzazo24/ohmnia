@@ -15,7 +15,7 @@ self.addEventListener('activate', e => {
 // Red primero, para recibir siempre la última versión; la caché solo se usa sin conexión.
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
+  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/_vercel/')) return;
   e.respondWith(
     fetch(e.request).then(r => {
       if (r.ok) { const copia = r.clone(); e.waitUntil(caches.open(CACHE).then(c => c.put(e.request, copia))); }
