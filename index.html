@@ -414,7 +414,11 @@ document.getElementById('helpClose').onclick=()=>help.close();
 help.onclick=e=>{ if(e.target===help) help.close(); }; // clic en el fondo
 
 renderNav(); renderPanel(); kpis(); summary(); tensionAhora();
-setInterval(()=>{ cache.clear(); kpis(); tensionAhora(); if(state.period==='hoy') renderPanel(); }, 10*60*1000);
+let ultimoRefresco = Date.now();
+function refrescar(){ ultimoRefresco = Date.now(); cache.clear(); kpis(); tensionAhora(); summary(); if(state.period==='hoy') renderPanel(); }
+setInterval(refrescar, 10*60*1000);
+// iOS pausa el temporizador en segundo plano: al volver, se actualiza si ha pasado más de un minuto.
+document.addEventListener('visibilitychange', () => { if(!document.hidden && Date.now()-ultimoRefresco > 60*1000) refrescar(); });
 </script>
 </body>
 </html>
