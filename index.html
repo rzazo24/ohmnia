@@ -290,10 +290,15 @@ const TABS = {
     // REData da 400 al pedir hoy por horas: con «Hoy» se muestra el dato diario de ayer.
     const hoy = state.period==='hoy';
     block(hoy?'Balance eléctrico (ayer)':'Balance eléctrico','balance/balance-electrico', d=>{
-      const tec = d.filter(s=>/^(renovable|no-renovable)$/i.test(s.group||'') && !/^generación /i.test(s.title));
-      if(!tec.length) return rows(desc(d), s=>energy(sum(s)));
-      const resto = d.filter(s=>!tec.includes(s));
-      return donut(tec)+filasMix(tec)+'<h3 class="meta" style="margin:8px 0 0">SUBTOTALES Y SALDOS</h3>'+rows(desc(resto), s=>energy(sum(s)));
+      // La cuenta de cómo la generación se convierte en demanda; el detalle por tecnología está en Generación.
+      const CUENTA = [['Generación renovable','Generación renovable'],['Generación no renovable','Generación no renovable'],['Saldo almacenamiento','Saldo de almacenamiento'],['Saldo I. internacionales','Saldo de intercambios internacionales']];
+      const serie = t => d.find(s=>s.title===t);
+      const fila = (nombre,s,fuerte) => s ? `<div class="row"${fuerte?' style="font-weight:600;color:var(--txt)"':''}><span>${esc(nombre)}</span><span>${energy(sum(s))}</span></div>` : '';
+      const dem = serie('Demanda en b.c.');
+      if(!CUENTA.some(([t])=>serie(t)) && !dem) return rows(desc(d), s=>energy(sum(s)));
+      return CUENTA.map(([t,n])=>fila(n,serie(t))).join('') + fila('Demanda',dem,true)
+        + '<h3 class="meta" style="margin:8px 0 0">DETALLE DE BOMBEO</h3>' + fila('Turbinación',serie('Turbinación bombeo')) + fila('Consumo',serie('Consumo bombeo'))
+        + `<button type="button" class="tLink meta" style="text-align:left" onclick="state.tab='generacion';renderNav();renderPanel();scrollTo(0,0)">Ver por tecnología</button>`;
     }, hoy?yesterday():null);
   }],
   demanda: ['Demanda', () => {
