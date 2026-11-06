@@ -154,6 +154,7 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
     <h3>Si un bloque no carga</h3>
     <p>«No disponible» significa que REData no ha devuelto ese dato. El resto de la página sigue funcionando; prueba más tarde. «DATOS PARCIALES» indica que falló algún indicador.</p>
     <p>Los datos son de Red Eléctrica y pueden ser provisionales. OhmnIA es un proyecto independiente.</p>
+    <p><a href="/ayuda/" style="color:var(--blue)">Guía completa</a></p>
     <p><a href="https://github.com/rzazo24/ohmnia" target="_blank" rel="noopener noreferrer" style="color:var(--blue)">Código en GitHub</a></p>
   </dialog>
   <div id="update" class="update" role="status" hidden><span>Hay una versión nueva de la app</span><button id="updateBtn" type="button">Actualizar</button></div>
@@ -313,7 +314,7 @@ function renderNav(){
   document.getElementById('periods').innerHTML = PERIODS.map(([k,l])=>`<button data-p="${k}" aria-pressed="${k===state.period}">${l}</button>`).join('');
   document.getElementById('tabs').innerHTML = Object.entries(TABS).map(([k,[l]])=>`<button role="tab" id="tab-${k}" aria-controls="panel" data-t="${k}" aria-selected="${k===state.tab}">${l}</button>`).join('');
 }
-function renderPanel(){ const p=document.getElementById('panel'); p.setAttribute('aria-labelledby','tab-'+state.tab); p.innerHTML=''; TABS[state.tab][1](); }
+function renderPanel(){ const p=document.getElementById('panel'); p.setAttribute('aria-labelledby','tab-'+state.tab); p.innerHTML=''; TABS[state.tab][1](); p.insertAdjacentHTML('beforeend',`<p class="meta" style="margin:0"><a href="/ayuda/#${state.tab}" style="color:var(--blue)">Qué significa esta pestaña</a></p>`); }
 document.getElementById('periods').onclick = e => { const p=e.target.dataset.p; if(p){ state.period=p; renderNav(); renderPanel(); } };
 document.getElementById('tabs').onclick = e => { const t=e.target.dataset.t; if(t){ state.tab=t; renderNav(); renderPanel(); } };
 document.getElementById('sumBtn').onclick = () => {

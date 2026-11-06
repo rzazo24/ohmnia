@@ -14,6 +14,7 @@ Sin build ni framework: Vercel sirve los ficheros estáticos y las funciones de 
 - `api/ree.js`: proxy opcional, sin usar (`USE_PROXY` en `false`, porque no hay problemas de CORS).
 - `api/version.js`: commit desplegado; la app lo usa para avisar de versiones nuevas.
 - `tension.js`: cálculo del semáforo, compartido entre la web y el cron.
+- `ayuda/index.html`: guía detallada en `/ayuda/`. Actualízala al cambiar bloques; sus anclas coinciden con las claves de `TABS`.
 - `sw.js` y `manifest.webmanifest`: PWA, pensada sobre todo para iPhone.
 
 ## Comandos

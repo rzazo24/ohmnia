@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guía de OhmnIA</title>
+<meta name="description" content="Qué significa cada indicador y cada bloque de OhmnIA.">
+<meta name="theme-color" content="#0D1014">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<style>
+:root{--bg:#0D1014;--card:#151A20;--line:#2A2F36;--txt:#E6E8EB;--txt2:#C9CED4;--mute:#9AA3AD;--blue:#7FC4F0}
+*{box-sizing:border-box;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left))}
+a{color:var(--blue)}
+h1{font-size:30px;line-height:1.2;margin:20px 0 6px}
+h2{font-size:21px;line-height:1.3;margin:0 0 10px}
+h3{font-size:16px;line-height:1.4;margin:18px 0 2px}
+p{margin:0 0 10px;color:var(--txt2)}
+ul{margin:0 0 10px;padding-left:20px;color:var(--txt2)}
+section,nav.indice{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:16px;margin-top:14px}
+nav.indice ul{margin:0;columns:2;list-style:none;padding:0}
+nav.indice li{min-height:32px}
+.nota{font-size:14px;color:var(--mute)}
+.tabla{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:8px 10px 8px 0;border-top:1px solid var(--line);vertical-align:top;color:var(--txt2)}
+th{color:var(--txt);border-top:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="/">← Volver a OhmnIA</a>
+  <h1>Guía de OhmnIA</h1>
+  <p>Qué muestra cada apartado y cómo interpretarlo. Los datos proceden de REData, de Red Eléctrica. OhmnIA es un proyecto independiente.</p>
+
+  <nav class="indice" aria-label="Índice">
+    <ul>
+      <li><a href="#conceptos">Conceptos básicos</a></li>
+      <li><a href="#periodos">Periodos</a></li>
+      <li><a href="#resumen">Resumen diario</a></li>
+      <li><a href="#tension">Tensión de la red</a></li>
+      <li><a href="#indicadores">Indicadores</a></li>
+      <li><a href="#balance">Balance</a></li>
+      <li><a href="#demanda">Demanda</a></li>
+      <li><a href="#generacion">Generación</a></li>
+      <li><a href="#intercambios">Intercambios</a></li>
+      <li><a href="#transporte">Red</a></li>
+      <li><a href="#mercados">Mercados</a></li>
+      <li><a href="#problemas">Si algo no carga</a></li>
+    </ul>
+  </nav>
+
+  <section id="conceptos">
+    <h2>Conceptos básicos</h2>
+    <h3>MW y MWh</h3>
+    <p>El megavatio (MW) mide potencia, lo que se consume o produce en un instante. El megavatio hora (MWh) mide energía, lo acumulado en un tiempo. Por ejemplo, mantener 1 MW durante dos horas son 2 MWh.</p>
+    <h3>GWh y TWh</h3>
+    <p>1 GWh son 1.000 MWh, y 1 TWh son 1.000 GWh. La web cambia de unidad según la cifra para que se lea mejor.</p>
+    <h3>Cómo leer las cifras</h3>
+    <p>El punto separa los miles y la coma, los decimales: 36.647 son treinta y seis mil seiscientos cuarenta y siete, y 27,6 es veintisiete con seis décimas.</p>
+    <h3>Generación síncrona</h3>
+    <p>Son las centrales con grandes máquinas giratorias conectadas a la red, como la nuclear, la hidráulica o el ciclo combinado. Su inercia ayuda a amortiguar las variaciones bruscas del sistema.</p>
+  </section>
+
+  <section id="periodos">
+    <h2>Periodos</h2>
+    <p>El selector Hoy, Mes y Año cambia el rango de la mayoría de los bloques. REData no ofrece todos los datos en todos los rangos, así que algunos bloques usan otro periodo. El título siempre lo indica: «(ayer)», «(mes anterior)», «(mes en curso)» o «(año en curso)».</p>
+    <p>Las fechas y horas siguen la hora de Madrid, estés donde estés.</p>
+  </section>
+
+  <section id="resumen">
+    <h2>Resumen diario</h2>
+    <p>Cada mañana, una IA (Claude) redacta un texto de unas 150 palabras con los datos del día anterior. Se publica hacia las 10:30, hora de Madrid, y se reintenta más tarde si falla.</p>
+    <p>Se publica sin revisión humana y puede contener errores, así que comprueba las cifras importantes en sus bloques o en REData. Si no hay resumen de ayer, verás el último disponible con su fecha.</p>
+  </section>
+
+  <section id="tension">
+    <h2>Tensión de la red</h2>
+    <p><strong>Es una estimación de OhmnIA, no un dato oficial de REE, y no predice incidentes.</strong> Muestra si la demanda está exigiendo al sistema más de lo habitual; no mide reservas ni inercia en tiempo real.</p>
+    <div class="tabla"><table>
+      <tr><th>Señal</th><th>Se activa si…</th></tr>
+      <tr><td>Demanda</td><td>supera el 90 % del pico de los últimos 30 días</td></tr>
+      <tr><td>Previsión</td><td>la demanda real se desvía más de un 3 % de la prevista</td></tr>
+    </table></div>
+    <p style="margin-top:12px">Sin señales activas, el estado es <strong>Holgada</strong>; con una, <strong>Exigida</strong>; con dos, <strong>Tensionada</strong>. Estas señales pueden activarse en un día normal, así que un estado alto no implica un problema.</p>
+    <p>Si el PVPC supera 1,5 veces la media del mes, aparece como dato informativo, pero no puntúa, porque refleja el mercado y no la seguridad de la red. Si falta un dato, verás «con datos parciales».</p>
+    <h3>Señales del resumen diario</h3>
+    <p>El resumen puede comentar otras señales del día anterior. No cambian el semáforo.</p>
+    <ul>
+      <li>El ciclo combinado supera el 25 % de la generación.</li>
+      <li>España es importadora neta en los intercambios programados.</li>
+      <li>El pico supera el 130 % o el valle baja del 70 % de la potencia media de la semana anterior.</li>
+      <li>Poca generación síncrona: solar por encima del 40 % y nuclear, hidráulica y ciclo combinado por debajo del 30 %.</li>
+    </ul>
+  </section>
+
+  <section id="indicadores">
+    <h2>Indicadores</h2>
+    <h3>Demanda</h3>
+    <p>Potencia demandada en MW, con la hora del dato. Muestra el penúltimo valor de la serie real, porque el último es provisional y suele corregirse a los pocos minutos.</p>
+    <h3>Renovable</h3>
+    <p>Porcentaje de la generación de hoy procedente de fuentes renovables, según lo publicado por REData hasta el momento.</p>
+    <h3>Emisiones</h3>
+    <p>Toneladas de CO₂ equivalente que REData publica para hoy. Es un dato provisional y no un acumulado hasta esta hora, así que puede superar el total de ayer.</p>
+    <h3>Precio</h3>
+    <p>Último PVPC disponible, en €/MWh.</p>
+  </section>
+
+  <section id="balance">
+    <h2>Balance</h2>
+    <h3>Balance eléctrico</h3>
+    <p>Muestra de dónde sale la energía del periodo y cómo cuadra con la demanda. Con «Hoy» muestra el dato de ayer. La lista incluye cada tecnología y también sus subtotales, así que no hay que sumar todas las filas.</p>
+    <ul>
+      <li><strong>Generación renovable y no renovable:</strong> subtotales de las tecnologías de cada grupo.</li>
+      <li><strong>Turbinación y consumo de bombeo:</strong> energía que producen y consumen las centrales hidráulicas de bombeo. El consumo aparece en negativo.</li>
+      <li><strong>Saldo almacenamiento:</strong> resultado de ambos. Si es negativo, se almacenó más de lo que se devolvió.</li>
+      <li><strong>Saldo I. internacionales:</strong> intercambios con otros países. Si es negativo, España exportó más de lo que importó.</li>
+      <li><strong>Demanda en b.c.:</strong> demanda en barras de central, el resultado de sumar la generación y los dos saldos.</li>
+    </ul>
+  </section>
+
+  <section id="demanda">
+    <h2>Demanda</h2>
+    <h3>Demanda en tiempo real</h3>
+    <p>Aparece con «Hoy». Compara la demanda real con la prevista, en MW.</p>
+    <h3>Evolución de la demanda</h3>
+    <p>Aparece con «Mes» y «Año». Muestra la energía demandada a lo largo del periodo y su total.</p>
+    <h3>Día de máxima demanda (mes anterior)</h3>
+    <p>La energía, no la potencia, que REData publica como demanda máxima diaria del mes anterior.</p>
+    <h3>Demanda por sector (IRE) (año en curso)</h3>
+    <p>El Índice de Red Eléctrica es un indicador adelantado del consumo de las empresas con potencia contratada superior a 450 kW. La versión corregida descuenta los efectos del calendario laboral y de la temperatura, lo que facilita ver la tendencia. Se publica por meses, unos 22 días después de terminar cada uno.</p>
+  </section>
+
+  <section id="generacion">
+    <h2>Generación</h2>
+    <p>Con «Hoy», estos bloques muestran el dato de ayer.</p>
+    <h3>Generación por tecnología</h3>
+    <p>Energía producida por cada tecnología: eólica, solar, nuclear, hidráulica, ciclo combinado y otras.</p>
+    <h3>Renovable vs no renovable</h3>
+    <p>Separa la generación según su origen. La nuclear cuenta como no renovable.</p>
+    <h3>Emisiones de CO₂</h3>
+    <p>Toneladas de CO₂ equivalente por tecnología y en total. La fila en t/MWh es el factor de emisión: las toneladas emitidas por cada MWh generado.</p>
+  </section>
+
+  <section id="intercambios">
+    <h2>Intercambios</h2>
+    <h3>Intercambios físicos por frontera</h3>
+    <p>Energía que ha circulado realmente con Francia, Portugal, Marruecos y Andorra. Con «Hoy» y «Mes» muestra el mes anterior, porque REData no da este dato por días recientes.</p>
+    <h3>Enlace con Baleares</h3>
+    <p>Energía transportada por el enlace submarino entre la península y Baleares. Con «Hoy» muestra el dato de ayer.</p>
+    <p class="nota">El resumen diario usa los intercambios programados, que son lo planificado y pueden diferir de lo que circuló.</p>
+  </section>
+
+  <section id="transporte">
+    <h2>Red</h2>
+    <p>Estos bloques no cambian con el selector de periodo. Miden la calidad y el tamaño de la red de transporte.</p>
+    <h3>Energía no suministrada y TIM</h3>
+    <p>La energía no suministrada (ENS) es la que no llega al sistema por interrupciones del servicio en la red de transporte. El tiempo de interrupción medio (TIM) la expresa en minutos: es la ENS dividida entre la potencia media del sistema.</p>
+    <h3>Número de cortes</h3>
+    <p>Interrupciones registradas en la red de transporte durante el año en curso.</p>
+    <h3>Índice de disponibilidad</h3>
+    <p>Porcentaje de tiempo en que las instalaciones de la red de transporte han estado disponibles para el servicio, ponderado por la potencia de cada instalación.</p>
+    <h3>Kilómetros de líneas</h3>
+    <p>Longitud de las líneas de transporte, con el último dato mensual cerrado.</p>
+  </section>
+
+  <section id="mercados">
+    <h2>Mercados</h2>
+    <h3>Precios de mercado</h3>
+    <p>Las filas muestran mínimo · media · máximo, en €/MWh. Con «Año» muestra el mes en curso.</p>
+    <ul>
+      <li><strong>Spot:</strong> el precio del mercado mayorista de electricidad.</li>
+      <li><strong>PVPC:</strong> la tarifa regulada para pequeños consumidores. No es el importe total de una factura, que incluye otros conceptos.</li>
+    </ul>
+    <h3>Servicios de ajuste</h3>
+    <p>Incluyen la resolución de restricciones técnicas, los servicios complementarios y la gestión de desvíos, y ayudan a mantener el equilibrio y la seguridad del sistema. «Coste» muestra su coste y «Energía gestionada», la energía movilizada. Con «Hoy» y «Mes» muestran el último mes cerrado.</p>
+  </section>
+
+  <section id="problemas">
+    <h2>Si algo no carga</h2>
+    <ul>
+      <li><strong>No disponible:</strong> REData no ha devuelto ese dato. El resto de la página sigue funcionando; prueba más tarde.</li>
+      <li><strong>Datos parciales:</strong> ha fallado alguno de los indicadores.</li>
+      <li><strong>Último resumen:</strong> aún no se ha publicado el resumen de ayer.</li>
+      <li><strong>Sin conexión:</strong> la app se abre, pero no muestra datos nuevos.</li>
+    </ul>
+  </section>
+
+  <p style="margin-top:20px"><a href="/">← Volver a OhmnIA</a> · <a href="https://github.com/rzazo24/ohmnia" target="_blank" rel="noopener noreferrer">Código en GitHub</a></p>
+</div>
+</body>
+</html>
