@@ -106,6 +106,7 @@ test('guarda latest e histórico en privado con el formato que lee la web', asyn
   assert.equal(j.texto, 'Resumen de prueba');
   assert.equal(j.fecha, '04/11/2026');
   assert.equal(j.publicado, '10:30');
+  assert.deepEqual(j.tension.señales, []);
 });
 
 test('sigue con las fuentes que responden y lista las que fallan', async () => {

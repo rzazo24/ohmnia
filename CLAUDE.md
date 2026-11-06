@@ -13,6 +13,7 @@ Sin build ni framework: Vercel sirve los ficheros estáticos y las funciones de 
 - `api/resumen.js`: sirve el resumen; `vercel.json` lo expone en `/resumenes/latest.json`.
 - `api/ree.js`: proxy opcional, sin usar (`USE_PROXY` en `false`, porque no hay problemas de CORS).
 - `api/version.js`: commit desplegado; la app lo usa para avisar de versiones nuevas.
+- `tension.js`: cálculo del semáforo, compartido entre la web y el cron.
 - `sw.js` y `manifest.webmanifest`: PWA, pensada sobre todo para iPhone.
 
 ## Comandos
@@ -45,6 +46,9 @@ Comportamiento comprobado:
 
 Otros detalles:
 
+- `demanda-tiempo-real` acepta 30 días con `hour`, pero la descarga es pesada: el pico se guarda en `localStorage` un día.
+- En `todas-fronteras-programados`, cada país trae una serie `saldo`: positivo es importación y negativo, exportación.
+
 - `demanda-maxima-diaria` devuelve energía (MWh), no potencia.
 - El último punto de la serie «Real» de demanda es provisional, así que se usa el penúltimo (`settled`).
 - Las series pueden tener distinta granularidad; `lineChart` coloca los puntos por fecha, no por posición.
@@ -54,8 +58,15 @@ Otros detalles:
 - Si un bloque muestra otro periodo que el elegido, el título lo indica: «(ayer)», «(mes anterior)», «(mes en curso)» o «(año en curso)».
 - No uses `sw.js` para cachear datos de REData, para no mostrar cifras antiguas como actuales.
 - El cron no debe sobrescribir el resumen anterior si falla o si faltan la demanda o la generación.
+- El semáforo de tensión es una estimación propia; nunca se presenta como dato oficial.
 - Las fechas de la web se calculan en Europe/Madrid (`madrid()`), no en la hora local del usuario.
 - El resumen se publica sin revisión humana: el prompt exige usar solo cifras presentes en los datos.
+
+## Semáforo de tensión
+
+Web, con `UMBRALES` al principio del script de `index.html`: demanda real sobre el pico de 30 días (> 90 %) y desvío frente a la prevista (> 3 %). 0 puntos, Holgada; 1, Exigida; 2, Tensionada. El PVPC sobre la media del mes (> 1,5 veces) es informativo y no puntúa. REData no da el mix en tiempo real (`estructura-generacion` con `hour` da error), así que la generación síncrona en vivo requeriría ESIOS.
+
+Cron, con `UMBRALES_DIA` en `tension.js`: ciclo combinado > 25 %, saldo importador, pico > 130 % o valle < 70 % de la potencia media semanal, y solar > 40 % con síncronas < 30 % («poca generación síncrona»). Se guardan en `tension` del JSON y no suman puntos del semáforo.
 
 ## Despliegue
 

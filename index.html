@@ -62,6 +62,12 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
 .update{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));width:min(688px,calc(100vw - 32px));display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;background:var(--card);border:1px solid var(--blue);border-radius:6px;font-size:14px;z-index:10}
 .sum .body[hidden],.update[hidden]{display:none}
 .update button{flex:none;min-height:36px;padding:0 12px;border:0;border-radius:6px;background:var(--blue);color:var(--bg);font-weight:600;cursor:pointer}
+.tHead{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;letter-spacing:.04em}
+.tEstado{font-family:var(--mono);font-size:14px;font-weight:600;white-space:nowrap}
+.tEstado::before{content:'';display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;background:currentColor}
+.tEstado[data-n="holgada"]{color:var(--green)}.tEstado[data-n="exigida"]{color:#E3A42B}.tEstado[data-n="tensionada"]{color:#E5484D}
+.tSenales{margin:0;padding-left:18px;font-size:14px;color:var(--txt2)}.tSenales:empty{display:none}
+.tLink{padding:0;border:0;background:none;color:var(--blue);font:inherit;text-decoration:underline;cursor:pointer}
 </style>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
@@ -94,6 +100,11 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
     </div>
   </section>
 
+  <section class="card tension" aria-label="Tensión de la red">
+    <div class="tHead"><strong>TENSIÓN DE LA RED <span class="meta">(estimación)</span></strong><span id="tEstado" class="tEstado">Calculando…</span></div>
+    <ul id="tSenales" class="tSenales"></ul>
+    <div class="meta"><span id="tNota">Estimación de OhmnIA, no es un dato oficial de REE.</span> <button id="tAyuda" type="button" class="tLink">Cómo se calcula</button></div>
+  </section>
   <section class="grid2 kpis" aria-label="Indicadores clave">
     <div class="kpi"><span class="l">Demanda</span><span class="v" style="color:var(--blue)" id="kDem">–</span><span class="u" id="kDemU">MW · tiempo real</span></div>
     <div class="kpi"><span class="l">Renovable</span><span class="v" style="color:var(--green)" id="kRen">–</span><span class="u">% hoy</span></div>
@@ -125,6 +136,15 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
       <li><strong>Red:</strong> calidad del servicio y kilómetros de líneas.</li>
       <li><strong>Mercados:</strong> precios (mínimo · media · máximo) y servicios de ajuste.</li>
     </ul>
+    <h3 id="helpTension">Tensión de la red</h3>
+    <p>Es una estimación de OhmnIA, no un dato oficial de REE, y no predice incidentes. Suma un punto por cada señal activa: 0, Holgada; 1, Exigida; 2, Tensionada.</p>
+    <ul>
+      <li><strong>Demanda:</strong> supera el 90 % del pico de los últimos 30 días.</li>
+      <li><strong>Previsión:</strong> la demanda real se desvía más de un 3 % de la prevista.</li>
+    </ul>
+    <p>Si el PVPC actual supera 1,5 veces la media del mes, se muestra como dato informativo, pero no puntúa, porque refleja el mercado y no la seguridad de la red.</p>
+    <p>Estas señales pueden activarse en un día normal, así que un estado alto no implica un problema. Si falta algún dato, se calcula con los demás y se indica «con datos parciales».</p>
+    <p>El resumen diario puede mencionar otras señales del día anterior: ciclo combinado por encima del 25 % del mix, saldo importador, pico o valle alejados de la media semanal (más del 130 % o menos del 70 %) y poca generación síncrona (solar por encima del 40 % y nuclear, hidráulica y ciclo combinado por debajo del 30 %).</p>
     <h3>Resumen diario</h3>
     <p>«Ayer en la red» es un texto generado por IA cada mañana con los datos del día anterior. Se publica sin revisión humana y puede contener errores, así que comprueba las cifras importantes en los bloques o en REData.</p>
     <h3>Instalar en el iPhone</h3>
@@ -141,6 +161,9 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
 </div>
 
 <script>
+/* Umbrales del semáforo de tensión: estimación propia, ajustable. */
+const UMBRALES = { demandaSobrePico: 0.90, precioSobreMedia: 1.5, desvioPrevision: 0.03 };
+
 const API = 'https://apidatos.ree.es/es/datos';
 const USE_PROXY = false; // true => pasa por /api/ree (si el navegador da errores de CORS)
 const TECH = {'Eólica':'#2A7AB0','Solar fotovoltaica':'#E3A42B','Solar térmica':'#C98A1E','Nuclear':'#6B4FA0','Ciclo combinado':'#8C8679','Hidráulica':'#3F9E8C','Carbón':'#5A4A3A','Cogeneración':'#A0786A','Renovable':'#4FC08D','No renovable':'#9AA3AD'};
@@ -343,13 +366,54 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden) check
 setInterval(checkVersion, 10*60*1000);
 checkVersion();
 
+/* ---------- semáforo de tensión (estimación propia) ---------- */
+// El pico de 30 días es una descarga pesada: se calcula una vez al día y se guarda en el dispositivo.
+async function picoDemanda(){
+  const dia = iso(madrid()).slice(0,10), clave = 'ohmnia.pico.'+dia;
+  try{ const g = +localStorage.getItem(clave); if(g>0) return g; }catch(e){}
+  const fin = madrid(), ini = new Date(fin); ini.setDate(ini.getDate()-30);
+  const d = await ree('demanda/demanda-tiempo-real', {start:iso(ini), end:iso(fin), trunc:'hour'});
+  const s = d.find(x=>/^real$/i.test(x.title)); if(!s) throw new Error('sin serie Real');
+  const pico = Math.max(...s.values.map(v=>v.v));
+  try{ Object.keys(localStorage).filter(k=>k.startsWith('ohmnia.pico.')).forEach(k=>localStorage.removeItem(k)); localStorage.setItem(clave, pico); }catch(e){}
+  return pico;
+}
+async function tensionAhora(){
+  const est = document.getElementById('tEstado'), lista = document.getElementById('tSenales'), nota = document.getElementById('tNota');
+  const base = 'Estimación de OhmnIA, no es un dato oficial de REE.';
+  try{
+    const { evaluarTension } = await import('/tension.js');
+    const [hoy, pico, mes] = await Promise.allSettled([
+      ree('demanda/demanda-tiempo-real', range('hoy')), picoDemanda(), ree('mercados/precios-mercados-tiempo-real', {...range('mes'),trunc:'hour'})
+    ]);
+    const senales = {};
+    const real = hoy.value?.find(x=>/^real$/i.test(x.title)), prev = hoy.value?.find(x=>/^prevista$/i.test(x.title));
+    if(real){
+      const u = settled(real), p = prev?.values.find(v=>v.t===u.t);
+      if(pico.value) senales.demanda = {actual:u.v, pico:Math.max(pico.value,u.v)};
+      if(p) senales.desvio = {real:u.v, prevista:p.v};
+    }
+    const pvpc = mes.value?.find(x=>/PVPC/i.test(x.title));
+    if(pvpc) senales.precio = {actual:current(pvpc).v, media:pvpc.values.reduce((a,x)=>a+x.v,0)/pvpc.values.length};
+    const r = evaluarTension(senales, UMBRALES);
+    if(!r.nivel) throw new Error('sin datos');
+    est.dataset.n = r.nivel;
+    est.textContent = {holgada:'Holgada', exigida:'Exigida', tensionada:'Tensionada'}[r.nivel];
+    lista.innerHTML = [...r.activas.map(a=>a.texto), ...r.informativas.map(a=>a.texto+' (informativo, no puntúa)')].map(t=>`<li>${esc(t)}</li>`).join('');
+    nota.textContent = (r.parcial ? 'Con datos parciales. ' : '') + base;
+  }catch(e){
+    delete est.dataset.n; est.textContent = 'No disponible'; lista.innerHTML = ''; nota.textContent = base;
+  }
+}
+document.getElementById('tAyuda').onclick = () => { document.getElementById('help').showModal(); document.getElementById('helpTension').scrollIntoView(); };
+
 const help=document.getElementById('help');
 document.getElementById('helpBtn').onclick=()=>help.showModal();
 document.getElementById('helpClose').onclick=()=>help.close();
 help.onclick=e=>{ if(e.target===help) help.close(); }; // clic en el fondo
 
-renderNav(); renderPanel(); kpis(); summary();
-setInterval(()=>{ cache.clear(); kpis(); if(state.period==='hoy') renderPanel(); }, 10*60*1000);
+renderNav(); renderPanel(); kpis(); summary(); tensionAhora();
+setInterval(()=>{ cache.clear(); kpis(); tensionAhora(); if(state.period==='hoy') renderPanel(); }, 10*60*1000);
 </script>
 </body>
 </html>

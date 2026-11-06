@@ -3,6 +3,7 @@
 // reintenta solo si el resumen de ayer aún no existe.
 import Anthropic from '@anthropic-ai/sdk';
 import { get, put } from '@vercel/blob';
+import { senalesDia } from '../../tension.js';
 
 const BASE = 'https://apidatos.ree.es/es/datos';
 const TZ = 'Europe/Madrid';
@@ -53,8 +54,8 @@ export function resumirSeries(json) {
   return out;
 }
 
-async function descargar(ruta, trunc, dia) {
-  const qs = new URLSearchParams({ start_date: `${dia}T00:00`, end_date: `${dia}T23:59`, time_trunc: trunc });
+async function descargar(ruta, trunc, dia, hasta = dia) {
+  const qs = new URLSearchParams({ start_date: `${dia}T00:00`, end_date: `${hasta}T23:59`, time_trunc: trunc });
   const r = await fetch(`${BASE}/${ruta}?${qs}`, {
     headers: { Accept: 'application/json', 'User-Agent': 'OhmnIA-dashboard/1.0' },
     signal: AbortSignal.timeout(20000),
@@ -66,7 +67,8 @@ async function descargar(ruta, trunc, dia) {
 const SYSTEM = `Eres analista del sistema eléctrico español y redactas el resumen diario de un dashboard público.
 Recibirás estadísticos de REData (Red Eléctrica) del día anterior. Escribe un único párrafo en español de unas 150 palabras (entre 130 y 170), sin títulos, listas ni markdown.
 Cubre lo más relevante: demanda (total del día, y pico y valle en MW, que son el max y el min de la serie «Real» de demanda-tiempo-real; ignora sus series Prevista y Programada y no cites horas), mix de generación y peso de las renovables, emisiones de CO₂, intercambios internacionales (son programados, no físicos: dilo así) y precios de mercado.
-Usa solo cifras presentes en los datos, con sus unidades; no inventes ni extrapoles. No calcules ratios ni porcentajes propios; los saldos de intercambios son la única suma permitida. No indiques ámbito geográfico (peninsular, nacional) salvo que aparezca en los datos. Si falta algún bloque de datos, no lo menciones. Tono sobrio y periodístico.`;
+Usa solo cifras presentes en los datos, con sus unidades; no inventes ni extrapoles. No calcules ratios ni porcentajes propios; los saldos de intercambios son la única suma permitida. No indiques ámbito geográfico (peninsular, nacional) salvo que aparezca en los datos. Si falta algún bloque de datos, no lo menciones. Tono sobrio y periodístico.
+Si el bloque tension trae señales, dedica una frase a explicarlas; si no hay ninguna, no menciones la tensión. No la califiques de «riesgo de apagón». Son una estimación propia de OhmnIA, no un dato oficial de REE.`;
 
 export default async function handler(req, res) {
   try {
@@ -104,6 +106,11 @@ async function ejecutar(req, res) {
   const faltan = OBLIGATORIAS.filter(r => !datos[r]);
   if (faltan.length) return res.status(502).json({ error: 'faltan datos obligatorios de REData', faltan, fallos });
 
+  // Media de los 7 días anteriores a ayer. Si falla, se omiten solo las señales de pico y valle.
+  const dia = n => new Date(Date.parse(`${ayer.iso}T12:00:00Z`) - n * 864e5).toISOString().slice(0, 10);
+  const semana = await descargar('demanda/evolucion', 'day', dia(7), dia(1)).then(s => s[0]?.media).catch(() => null);
+  const tension = { señales: senalesDia(datos, semana), fuente: 'estimación de OhmnIA, no dato oficial de REE' };
+
   const client = new Anthropic(); // ANTHROPIC_API_KEY del entorno
   const msg = await client.beta.messages.create({
     model: MODEL,
@@ -112,13 +119,13 @@ async function ejecutar(req, res) {
     output_config: { effort: 'low' },
     // Haiku no admite el fallback de servidor.
     ...(/haiku/.test(MODEL) ? {} : { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' }),
-    messages: [{ role: 'user', content: `Fecha de los datos: ${ayer.es}\n\n${JSON.stringify(datos)}` }],
+    messages: [{ role: 'user', content: `Fecha de los datos: ${ayer.es}\n\n${JSON.stringify(datos)}\n\nBloque tension: ${JSON.stringify(tension)}` }],
   });
   if (msg.stop_reason === 'refusal') return res.status(502).json({ error: 'Claude rechazó la petición', detalle: msg.stop_details });
   const texto = msg.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
   if (!texto) return res.status(502).json({ error: 'respuesta vacía', stop_reason: msg.stop_reason });
 
-  const cuerpo = JSON.stringify({ texto, fecha: ayer.es, publicado: `${ahora.hour}:${ahora.minute}`, modelo: msg.model, fuentes_sin_datos: fallos });
+  const cuerpo = JSON.stringify({ texto, fecha: ayer.es, publicado: `${ahora.hour}:${ahora.minute}`, modelo: msg.model, fuentes_sin_datos: fallos, tension });
   const opts = { access: 'private', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json', cacheControlMaxAge: 60 };
   await put('resumenes/latest.json', cuerpo, opts);
   await put(`resumenes/${ayer.iso}.json`, cuerpo, opts); // histórico

@@ -1,6 +1,6 @@
 // Solo guarda la propia app. Los datos de REData nunca se cachean aquí, para no enseñar cifras viejas como actuales.
 const CACHE = 'ohmnia-v1';
-const SHELL = ['/', '/manifest.webmanifest', '/favicon.svg', '/icon-192.png', '/apple-touch-icon.png'];
+const SHELL = ['/', '/manifest.webmanifest', '/tension.js', '/favicon.svg', '/icon-192.png', '/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
