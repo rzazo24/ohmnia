@@ -33,7 +33,6 @@ export function evaluarTension(senales = {}, umbrales) {
 export const UMBRALES_DIA = {
   cicloCombinado: 0.25,
   picoSobreMedia: 1.3, // pico frente a la potencia media de la semana
-  valleSobreMedia: 0.7,
   solarInercia: 0.4,
   sincronasInercia: 0.3,
 };
@@ -43,8 +42,8 @@ export function senalesDia(datos, semana, u = UMBRALES_DIA) {
   const senales = [];
   const mix = (datos['generacion/estructura-generacion'] || []);
   const peso = (...nombres) => {
-    const v = mix.filter(s => nombres.includes(s.serie)).map(s => s.pct);
-    return v.length === nombres.length && v.every(Number.isFinite) ? v.reduce((a, b) => a + b, 0) : null;
+    const v = mix.filter(s => nombres.includes(s.serie)).map(s => s.pct).filter(Number.isFinite);
+    return v.length ? v.reduce((a, b) => a + b, 0) : null; // suma las presentes; null solo si no hay ninguna
   };
 
   const ciclo = peso('Ciclo combinado');
@@ -63,11 +62,13 @@ export function senalesDia(datos, semana, u = UMBRALES_DIA) {
   if (real && positivo(semana)) {
     const media = semana / 24; // MWh al día a MW medios
     if (real.max / media > u.picoSobreMedia) senales.push({ clave: 'pico', texto: `El pico de demanda fue el ${pct(real.max / media)} % de la potencia media de la semana` });
-    if (real.min / media < u.valleSobreMedia) senales.push({ clave: 'valle', texto: `El valle de demanda fue el ${pct(real.min / media)} % de la potencia media de la semana` });
   }
 
   const solar = peso('Solar fotovoltaica', 'Solar térmica');
-  const sincronas = peso('Nuclear', 'Hidráulica', 'Ciclo combinado');
+  // Si falta una síncrona, la suma saldría baja y daría una falsa alarma: se exigen las tres.
+  const nombresSincronas = ['Nuclear', 'Hidráulica', 'Ciclo combinado'];
+  const completas = nombresSincronas.every(n => Number.isFinite(mix.find(s => s.serie === n)?.pct));
+  const sincronas = completas ? peso(...nombresSincronas) : null;
   if (solar !== null && sincronas !== null && solar > u.solarInercia && sincronas < u.sincronasInercia) {
     senales.push({ clave: 'poca_sincrona', tipo: 'inercia', texto: `Poca generación síncrona: solar al ${pct(solar, 1)} % y síncronas al ${pct(sincronas, 1)} %` });
   }

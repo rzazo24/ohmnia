@@ -65,9 +65,9 @@ Otros detalles:
 
 ## Semáforo de tensión
 
-Web, con `UMBRALES` al principio del script de `index.html`: demanda real sobre el pico de 30 días (> 90 %) y desvío frente a la prevista (> 3 %). 0 puntos, Holgada; 1, Exigida; 2, Tensionada. El PVPC sobre la media del mes (> 1,5 veces) es informativo y no puntúa. REData no da el mix en tiempo real (`estructura-generacion` con `hour` da error), así que la generación síncrona en vivo requeriría ESIOS.
+Web, con `UMBRALES` al principio del script de `index.html`: demanda real sobre el pico de 30 días (> 97 %) y desvío frente a la prevista (> 3 %). 0 puntos, Holgada; 1, Exigida; 2, Tensionada. El PVPC sobre la media del mes (> 1,5 veces) es informativo y no puntúa. REData no da el mix en tiempo real (`estructura-generacion` con `hour` da error), así que la generación síncrona en vivo requeriría ESIOS.
 
-Cron, con `UMBRALES_DIA` en `tension.js`: ciclo combinado > 25 %, saldo importador, pico > 130 % o valle < 70 % de la potencia media semanal, y solar > 40 % con síncronas < 30 % («poca generación síncrona»). Se guardan en `tension` del JSON y no suman puntos del semáforo.
+Cron, con `UMBRALES_DIA` en `tension.js`: ciclo combinado > 25 %, saldo importador, pico > 130 % de la potencia media semanal, y solar > 40 % con síncronas < 30 % («poca generación síncrona»). Se guardan en `tension` del JSON y no suman puntos del semáforo.
 
 ## Despliegue
 

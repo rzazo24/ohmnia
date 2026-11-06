@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluarTension, senalesDia } from '../tension.js';
 
-const U = { demandaSobrePico: 0.9, precioSobreMedia: 1.5, desvioPrevision: 0.03 };
+const U = { demandaSobrePico: 0.97, precioSobreMedia: 1.5, desvioPrevision: 0.03 };
 const tranquila = { demanda: { actual: 30, pico: 40 }, precio: { actual: 100, media: 100 }, desvio: { real: 100, prevista: 100 } };
 
 test('0 puntos: Holgada', () => {
@@ -11,9 +11,9 @@ test('0 puntos: Holgada', () => {
 });
 
 test('1 punto: Exigida, con el texto de la señal', () => {
-  const r = evaluarTension({ ...tranquila, demanda: { actual: 37.2, pico: 40 } }, U);
+  const r = evaluarTension({ ...tranquila, demanda: { actual: 39.2, pico: 40 } }, U);
   assert.equal(r.nivel, 'exigida');
-  assert.equal(r.activas[0].texto, 'Demanda al 93 % del pico de 30 días');
+  assert.equal(r.activas[0].texto, 'Demanda al 98 % del pico de 30 días');
 });
 
 test('2 puntos: Tensionada', () => {
@@ -28,7 +28,7 @@ test('el precio informa, pero no puntúa', () => {
 });
 
 test('el umbral exacto no suma: debe superarse', () => {
-  assert.equal(evaluarTension({ demanda: { actual: 90, pico: 100 }, precio: { actual: 150, media: 100 }, desvio: { real: 103, prevista: 100 } }, U).puntos, 0);
+  assert.equal(evaluarTension({ demanda: { actual: 97, pico: 100 }, precio: { actual: 150, media: 100 }, desvio: { real: 103, prevista: 100 } }, U).puntos, 0);
 });
 
 test('el desvío cuenta en los dos sentidos', () => {
@@ -67,9 +67,9 @@ test('saldo positivo: importador', () => {
   assert.deepEqual(claves({ 'intercambios/todas-fronteras-programados': [saldo(50), saldo(-10)] }), ['importador']);
 });
 
-test('pico y valle alejados de la media semanal', () => {
+test('el pico alejado de la media semanal activa la señal; un valle bajo no', () => {
   const d = { 'demanda/demanda-tiempo-real': [{ serie: 'Real', max: 40000, min: 18000 }] };
-  assert.deepEqual(claves(d, 720000), ['pico', 'valle']);
+  assert.deepEqual(claves(d, 720000), ['pico']);
   assert.deepEqual(claves(d, null), []);
 });
 
@@ -78,6 +78,16 @@ test('poca generación síncrona, descrita sin hablar de escasez', () => {
   const [s] = senalesDia(d);
   assert.equal(s.clave, 'poca_sincrona');
   assert.match(s.texto, /^Poca generación síncrona/);
+});
+
+test('la baja inercia no depende de que exista Solar térmica', () => {
+  const d = { 'generacion/estructura-generacion': [serie('Ciclo combinado', 0.05), serie('Nuclear', 0.15), serie('Hidráulica', 0.05), serie('Solar fotovoltaica', 0.45)] };
+  assert.deepEqual(claves(d), ['poca_sincrona']);
+});
+
+test('si falta una síncrona no da una falsa alarma de baja inercia', () => {
+  const d = { 'generacion/estructura-generacion': [serie('Ciclo combinado', 0.05), serie('Hidráulica', 0.05), serie('Solar fotovoltaica', 0.45)] };
+  assert.deepEqual(claves(d), []);
 });
 
 test('sin datos de un bloque no inventa señales', () => {

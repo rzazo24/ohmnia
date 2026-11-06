@@ -139,12 +139,12 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
     <h3 id="helpTension">Tensión de la red</h3>
     <p>Es una estimación de OhmnIA, no un dato oficial de REE, y no predice incidentes. Suma un punto por cada señal activa: 0, Holgada; 1, Exigida; 2, Tensionada.</p>
     <ul>
-      <li><strong>Demanda:</strong> supera el 90 % del pico de los últimos 30 días.</li>
+      <li><strong>Demanda:</strong> supera el 97 % del pico de los últimos 30 días.</li>
       <li><strong>Previsión:</strong> la demanda real se desvía más de un 3 % de la prevista.</li>
     </ul>
     <p>Si el PVPC actual supera 1,5 veces la media del mes, se muestra como dato informativo, pero no puntúa, porque refleja el mercado y no la seguridad de la red.</p>
     <p>Estas señales pueden activarse en un día normal, así que un estado alto no implica un problema. Si falta algún dato, se calcula con los demás y se indica «con datos parciales».</p>
-    <p>El resumen diario puede mencionar otras señales del día anterior: ciclo combinado por encima del 25 % del mix, saldo importador, pico o valle alejados de la media semanal (más del 130 % o menos del 70 %) y poca generación síncrona (solar por encima del 40 % y nuclear, hidráulica y ciclo combinado por debajo del 30 %).</p>
+    <p>El resumen diario puede mencionar otras señales del día anterior: ciclo combinado por encima del 25 % del mix, saldo importador, pico por encima del 130 % de la media semanal y poca generación síncrona (solar por encima del 40 % y nuclear, hidráulica y ciclo combinado por debajo del 30 %).</p>
     <h3>Resumen diario</h3>
     <p>«Ayer en la red» es un texto generado por IA cada mañana con los datos del día anterior. Se publica sin revisión humana y puede contener errores, así que comprueba las cifras importantes en los bloques o en REData.</p>
     <h3>Instalar en el iPhone</h3>
@@ -163,7 +163,7 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
 
 <script>
 /* Umbrales del semáforo de tensión: estimación propia, ajustable. */
-const UMBRALES = { demandaSobrePico: 0.90, precioSobreMedia: 1.5, desvioPrevision: 0.03 };
+const UMBRALES = { demandaSobrePico: 0.97, precioSobreMedia: 1.5, desvioPrevision: 0.03 };
 
 const API = 'https://apidatos.ree.es/es/datos';
 const USE_PROXY = false; // true => pasa por /api/ree (si el navegador da errores de CORS)
