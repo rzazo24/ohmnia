@@ -3,9 +3,24 @@ const pct = (x, d = 0) => (x * 100).toLocaleString('es-ES', { maximumFractionDig
 const num = (x, d = 1) => x.toLocaleString('es-ES', { maximumFractionDigits: d });
 const positivo = x => Number.isFinite(x) && x > 0;
 
-// senales: { demanda: {actual, pico}, precio: {actual, media}, desvio: {real, prevista} }; cualquiera puede faltar.
+// Porcentajes del último instante en que todas las tecnologías tienen dato. Si falta alguna, no se calcula.
+export function mixDesdeSeries(series) {
+  const listas = Object.values(series);
+  if (!listas.length || listas.some(l => !l.length)) return null;
+  const instantes = [...new Set(listas[0].map(p => p.t))].sort().reverse();
+  for (const t of instantes) {
+    const v = Object.fromEntries(Object.entries(series).map(([c, l]) => [c, l.find(p => p.t === t)?.v]));
+    if (!Object.values(v).every(Number.isFinite)) continue;
+    const total = Object.values(v).reduce((a, b) => a + b, 0);
+    if (total <= 0) return null;
+    return { t, solar: v.solar / total, sincronas: (v.nuclear + v.hidraulica + v.cicloCombinado) / total };
+  }
+  return null;
+}
+
+// senales: { demanda: {actual, pico}, precio: {actual, media}, desvio: {real, prevista}, mix: {solar, sincronas} }; cualquiera puede faltar.
 export function evaluarTension(senales = {}, umbrales) {
-  const { demanda, precio, desvio } = senales;
+  const { demanda, precio, desvio, mix } = senales;
   const activas = [], informativas = [];
   let evaluadas = 0;
 
@@ -25,9 +40,16 @@ export function evaluarTension(senales = {}, umbrales) {
     if (r > umbrales.desvioPrevision) activas.push({ clave: 'desvio', texto: `Desvío del ${pct(r, 1)} % frente a la previsión` });
   }
 
+  if (Number.isFinite(mix?.solar) && Number.isFinite(mix?.sincronas)) {
+    evaluadas++;
+    if (mix.solar > umbrales.solarInercia && mix.sincronas < umbrales.sincronasInercia) {
+      activas.push({ clave: 'mix', texto: `Poca generación síncrona: solar al ${pct(mix.solar)} % y síncronas al ${pct(mix.sincronas)} %` });
+    }
+  }
+
   const puntos = activas.length;
   const nivel = !evaluadas ? null : puntos === 0 ? 'holgada' : puntos === 1 ? 'exigida' : 'tensionada';
-  return { nivel, puntos, activas, informativas, parcial: evaluadas === 1, evaluadas };
+  return { nivel, puntos, activas, informativas, parcial: evaluadas > 0 && evaluadas < 3, evaluadas };
 }
 
 export const UMBRALES_DIA = {

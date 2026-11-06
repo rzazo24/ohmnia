@@ -1,6 +1,6 @@
 # OhmnIA
 
-Dashboard del sistema eléctrico español con datos de [REData](https://www.ree.es/es/apidatos) (Red Eléctrica) y un resumen diario generado con la API de Claude. Se despliega en Vercel.
+Dashboard del sistema eléctrico español con datos de [REData](https://www.ree.es/es/apidatos) y [ESIOS](https://api.esios.ree.es/) (Red Eléctrica) y un resumen diario generado con la API de Claude. Se despliega en Vercel.
 
 **Web:** [ohmnia.vercel.app](https://ohmnia.vercel.app/)
 
@@ -10,6 +10,9 @@ Dashboard del sistema eléctrico español con datos de [REData](https://www.ree.
 - **Cuatro indicadores:** demanda en tiempo real, porcentaje renovable, emisiones y precio.
 - **Selector de periodo:** Hoy, Mes y Año.
 - **Resumen «Ayer en la red»:** un texto de unas 150 palabras que se genera cada mañana.
+- **Semáforo de tensión:** una estimación propia, que no es un dato oficial de REE, con demanda, desvío de previsión y generación síncrona.
+- **Guía:** explicación de cada bloque en [`/ayuda/`](https://ohmnia.vercel.app/ayuda/).
+- **PWA:** se puede instalar en el móvil y avisa de versiones nuevas.
 
 ## Estructura
 
@@ -18,6 +21,9 @@ Dashboard del sistema eléctrico español con datos de [REData](https://www.ree.
 | `index.html` | La web completa: consulta REData desde el navegador y dibuja los gráficos |
 | `api/cron/resumen.js` | Descarga los datos de ayer, pide el resumen a Claude y lo guarda en Vercel Blob |
 | `api/resumen.js` | Sirve el último resumen, expuesto en `/resumenes/latest.json` |
+| `api/esios.js` | Mix peninsular en tiempo real de ESIOS; el token no llega al navegador |
+| `tension.js` | Cálculo del semáforo, compartido entre la web y el cron |
+| `ayuda/index.html` | Guía detallada |
 | `api/ree.js` | Proxy opcional hacia REData (se activa con `USE_PROXY` en `index.html`) |
 | `vercel.json` | Crons, duración máxima de la función y rewrite del resumen |
 
@@ -34,6 +40,7 @@ Dashboard del sistema eléctrico español con datos de [REData](https://www.ree.
 | `CRON_SECRET` | Sí | Protege el endpoint del cron. Genérala con `openssl rand -hex 32` |
 | `BLOB_STORE_ID` | Sí* | La añade Vercel al conectar el store |
 | `BLOB_READ_WRITE_TOKEN` | Sí* | Alternativa a `BLOB_STORE_ID` |
+| `ESIOS_TOKEN` | No | Token personal de ESIOS. Sin él, el semáforo se calcula con datos parciales |
 | `CLAUDE_MODEL` | No | Cambia el modelo (por defecto, `claude-opus-5-5`) |
 
 \* Basta con una de las dos.
@@ -58,12 +65,22 @@ python3 -m http.server 8000
 
 Con este servidor funciona la web, pero no las funciones de `api/`, así que el resumen dará 404. Para probarlas, usa `vercel dev`.
 
+## Tests
+
+```bash
+npm test
+```
+
+Usan datos simulados y no llaman a servicios externos.
+
 ## Limitaciones de REData
 
 Cada endpoint admite solo ciertas granularidades y rangos, y varios no responden con datos del día en curso. Por eso algunos bloques muestran el dato de ayer o del mes anterior, indicado en su título.
 
 - El último punto de la demanda real es provisional, así que se muestra el penúltimo.
 - El resumen usa los intercambios programados, porque los físicos dan error por días.
+
+El mix en tiempo real no está en REData, por eso esa señal usa ESIOS.
 
 ## Licencia
 

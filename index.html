@@ -137,10 +137,11 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
       <li><strong>Mercados:</strong> precios (mínimo · media · máximo) y servicios de ajuste.</li>
     </ul>
     <h3 id="helpTension">Tensión de la red</h3>
-    <p>Es una estimación de OhmnIA, no un dato oficial de REE, y no predice incidentes. Suma un punto por cada señal activa: 0, Holgada; 1, Exigida; 2, Tensionada.</p>
+    <p>Es una estimación de OhmnIA, no un dato oficial de REE, y no predice incidentes. Suma un punto por cada señal activa: 0, Holgada; 1, Exigida; 2 o más, Tensionada.</p>
     <ul>
       <li><strong>Demanda:</strong> supera el 97 % del pico de los últimos 30 días.</li>
       <li><strong>Previsión:</strong> la demanda real se desvía más de un 3 % de la prevista.</li>
+      <li><strong>Poca generación síncrona:</strong> en la península, la solar supera el 40 % y nuclear, hidráulica y ciclo combinado no llegan al 30 %. Dato de ESIOS.</li>
     </ul>
     <p>Si el PVPC actual supera 1,5 veces la media del mes, se muestra como dato informativo, pero no puntúa, porque refleja el mercado y no la seguridad de la red.</p>
     <p>Estas señales pueden activarse en un día normal, así que un estado alto no implica un problema. Si falta algún dato, se calcula con los demás y se indica «con datos parciales».</p>
@@ -163,7 +164,7 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
 
 <script>
 /* Umbrales del semáforo de tensión: estimación propia, ajustable. */
-const UMBRALES = { demandaSobrePico: 0.97, precioSobreMedia: 1.5, desvioPrevision: 0.03 };
+const UMBRALES = { demandaSobrePico: 0.97, precioSobreMedia: 1.5, desvioPrevision: 0.03, solarInercia: 0.40, sincronasInercia: 0.30 };
 
 const API = 'https://apidatos.ree.es/es/datos';
 const USE_PROXY = false; // true => pasa por /api/ree (si el navegador da errores de CORS)
@@ -384,8 +385,9 @@ async function tensionAhora(){
   const base = 'Estimación de OhmnIA, no es un dato oficial de REE.';
   try{
     const { evaluarTension } = await import('/tension.js');
-    const [hoy, pico, mes] = await Promise.allSettled([
-      ree('demanda/demanda-tiempo-real', range('hoy')), picoDemanda(), ree('mercados/precios-mercados-tiempo-real', {...range('mes'),trunc:'hour'})
+    const [hoy, pico, mes, esios] = await Promise.allSettled([
+      ree('demanda/demanda-tiempo-real', range('hoy')), picoDemanda(), ree('mercados/precios-mercados-tiempo-real', {...range('mes'),trunc:'hour'}),
+      fetch('/api/esios').then(r=>r.ok?r.json():null)
     ]);
     const senales = {};
     const real = hoy.value?.find(x=>/^real$/i.test(x.title)), prev = hoy.value?.find(x=>/^prevista$/i.test(x.title));
@@ -396,6 +398,7 @@ async function tensionAhora(){
     }
     const pvpc = mes.value?.find(x=>/PVPC/i.test(x.title));
     if(pvpc) senales.precio = {actual:current(pvpc).v, media:pvpc.values.reduce((a,x)=>a+x.v,0)/pvpc.values.length};
+    if(esios.value && !esios.value.antiguo) senales.mix = esios.value;
     const r = evaluarTension(senales, UMBRALES);
     if(!r.nivel) throw new Error('sin datos');
     est.dataset.n = r.nivel;

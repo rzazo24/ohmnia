@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluarTension, senalesDia } from '../tension.js';
+import { evaluarTension, mixDesdeSeries, senalesDia } from '../tension.js';
 
-const U = { demandaSobrePico: 0.97, precioSobreMedia: 1.5, desvioPrevision: 0.03 };
-const tranquila = { demanda: { actual: 30, pico: 40 }, precio: { actual: 100, media: 100 }, desvio: { real: 100, prevista: 100 } };
+const U = { demandaSobrePico: 0.97, precioSobreMedia: 1.5, desvioPrevision: 0.03, solarInercia: 0.4, sincronasInercia: 0.3 };
+const tranquila = { demanda: { actual: 30, pico: 40 }, precio: { actual: 100, media: 100 }, desvio: { real: 100, prevista: 100 }, mix: { solar: 0.1, sincronas: 0.7 } };
 
 test('0 puntos: Holgada', () => {
   const r = evaluarTension(tranquila, U);
@@ -14,6 +14,34 @@ test('1 punto: Exigida, con el texto de la señal', () => {
   const r = evaluarTension({ ...tranquila, demanda: { actual: 39.2, pico: 40 } }, U);
   assert.equal(r.nivel, 'exigida');
   assert.equal(r.activas[0].texto, 'Demanda al 98 % del pico de 30 días');
+});
+
+test('poca generación síncrona puntúa y lo explica', () => {
+  const r = evaluarTension({ ...tranquila, mix: { solar: 0.45, sincronas: 0.25 } }, U);
+  assert.deepEqual([r.nivel, r.activas[0].texto], ['exigida', 'Poca generación síncrona: solar al 45 % y síncronas al 25 %']);
+});
+
+test('3 puntos: Tensionada', () => {
+  const r = evaluarTension({ demanda: { actual: 39, pico: 40 }, desvio: { real: 110, prevista: 100 }, mix: { solar: 0.45, sincronas: 0.25 } }, U);
+  assert.deepEqual([r.nivel, r.puntos], ['tensionada', 3]);
+});
+
+test('sin ESIOS se calcula con el resto e indica datos parciales', () => {
+  const { mix, ...sinMix } = tranquila;
+  const r = evaluarTension(sinMix, U);
+  assert.deepEqual([r.nivel, r.parcial, r.evaluadas], ['holgada', true, 2]);
+});
+
+test('mixDesdeSeries usa el último instante común, con datos reales', () => {
+  const p = (v, ...t) => t.map(x => ({ t: x, v }));
+  const r = mixDesdeSeries({ hidraulica: p(4444, 'a', 'b'), nuclear: p(5184, 'a', 'b'), cicloCombinado: p(13980, 'a', 'b'), solar: p(117, 'a', 'b'), resto: p(4681, 'a') });
+  assert.equal(r.t, 'a');
+  assert.ok(Math.abs(r.sincronas - 23608 / 28406) < 1e-9);
+  assert.ok(Math.abs(r.solar - 117 / 28406) < 1e-9);
+});
+
+test('mixDesdeSeries no calcula si falta una tecnología', () => {
+  assert.equal(mixDesdeSeries({ solar: [{ t: 'a', v: 1 }], nuclear: [] }), null);
 });
 
 test('2 puntos: Tensionada', () => {

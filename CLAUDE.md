@@ -12,6 +12,7 @@ Sin build ni framework: Vercel sirve los ficheros estáticos y las funciones de 
 - `api/cron/resumen.js`: cron diario que descarga datos, llama a Claude y guarda en Vercel Blob.
 - `api/resumen.js`: sirve el resumen; `vercel.json` lo expone en `/resumenes/latest.json`.
 - `api/ree.js`: proxy opcional, sin usar (`USE_PROXY` en `false`, porque no hay problemas de CORS).
+- `api/esios.js`: mix peninsular en tiempo real de ESIOS, con `ESIOS_TOKEN`; el token nunca llega al navegador.
 - `api/version.js`: commit desplegado; la app lo usa para avisar de versiones nuevas.
 - `tension.js`: cálculo del semáforo, compartido entre la web y el cron.
 - `ayuda/index.html`: guía detallada en `/ayuda/`. Actualízala al cambiar bloques; sus anclas coinciden con las claves de `TABS`.
@@ -65,7 +66,9 @@ Otros detalles:
 
 ## Semáforo de tensión
 
-Web, con `UMBRALES` al principio del script de `index.html`: demanda real sobre el pico de 30 días (> 97 %) y desvío frente a la prevista (> 3 %). 0 puntos, Holgada; 1, Exigida; 2, Tensionada. El PVPC sobre la media del mes (> 1,5 veces) es informativo y no puntúa. REData no da el mix en tiempo real (`estructura-generacion` con `hour` da error), así que la generación síncrona en vivo requeriría ESIOS.
+Web, con `UMBRALES` al principio del script de `index.html`: demanda real sobre el pico de 30 días (> 97 %) desvío frente a la prevista (> 3 %) y, con ESIOS, solar > 40 % con síncronas < 30 %. 0 puntos, Holgada; 1, Exigida; 2 o más, Tensionada. El PVPC sobre la media del mes (> 1,5 veces) es informativo y no puntúa. REData no da el mix en tiempo real (`estructura-generacion` con `hour` da error), por eso se usa ESIOS.
+
+ESIOS (cabecera `x-api-key`): indicadores peninsulares 546 hidráulica, 547 carbón, 548 fuel-gas, 549 nuclear, 550 ciclo combinado, 551 eólica, 552 solar (ya incluye 1294 térmica y 1295 fotovoltaica) y 555 resto. No uses 10351 y 10352 como total: no cuadran con las tecnologías.
 
 Cron, con `UMBRALES_DIA` en `tension.js`: ciclo combinado > 25 %, saldo importador, pico > 130 % de la potencia media semanal, y solar > 40 % con síncronas < 30 % («poca generación síncrona»). Se guardan en `tension` del JSON y no suman puntos del semáforo.
 
