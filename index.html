@@ -248,6 +248,31 @@ function stackBars(list, h=130){
   let r=''; for(let i=0;i<n;i++){ let yy=h; list.forEach((s,k)=>{ const v=Math.max(0,s.values[i]?.v||0), bh=v/max*h; yy-=bh; r+=`<rect x="${(i*bw+.5).toFixed(1)}" y="${yy.toFixed(1)}" width="${Math.max(bw-1,1).toFixed(1)}" height="${bh.toFixed(1)}" fill="${colorOf(s,k)}"/>`; }); }
   return `<svg viewBox="0 0 ${W} ${h}" role="img" aria-label="Barras apiladas">${r}</svg>`;
 }
+/* ---------- reparto por tecnología ---------- */
+// Cada tecnología conserva su color aunque cambie el orden. El resto se agrupa para no pasar de seis partes.
+const PARTES = {'Ciclo combinado':['Ciclo combinado','#D55181'],'Solar fotovoltaica':['Solar','#C98500'],'Solar térmica':['Solar','#C98500'],'Nuclear':['Nuclear','#9085E9'],'Eólica':['Eólica','#199E70'],'Hidráulica':['Hidráulica','#3987E5']};
+const OTRAS = ['Otras','#7C8591'];
+const parte = s => PARTES[s.title] || OTRAS;
+const desc = l => [...l].sort((a,b)=>sum(b)-sum(a));
+const pctDe = (v,t) => nf(v/t*100, 1)+' %';
+function donut(list){
+  const positivas = list.filter(s=>sum(s)>0), total = positivas.reduce((a,s)=>a+sum(s),0);
+  if(!total) return '';
+  const grupos = new Map();
+  positivas.forEach(s=>{ const [n,c]=parte(s), g=grupos.get(n)||{n,c,v:0}; g.v+=sum(s); grupos.set(n,g); });
+  const orden = [...grupos.values()].sort((a,b)=>b.v-a.v);
+  let inicio = 0;
+  const arcos = orden.map(g=>{
+    const largo = g.v/total*100, hueco = orden.length>1?0.6:0, a=`<circle cx="50" cy="50" r="38" pathLength="100" fill="none" stroke="${g.c}" stroke-width="14" stroke-dasharray="${Math.max(largo-hueco,0.1).toFixed(2)} ${(100-Math.max(largo-hueco,0.1)).toFixed(2)}" stroke-dashoffset="${(-inicio).toFixed(2)}"><title>${esc(g.n)}: ${energy(g.v)} · ${pctDe(g.v,total)}</title></circle>`;
+    inicio += largo; return a;
+  }).join('');
+  return `<svg viewBox="0 0 100 100" style="max-width:220px;margin:0 auto" role="img" aria-label="Reparto: ${esc(orden.map(g=>g.n+' '+pctDe(g.v,total)).join(', '))}"><g transform="rotate(-90 50 50)">${arcos}</g><text x="50" y="48" text-anchor="middle" font-size="9" fill="#E6E8EB">${energy(total)}</text><text x="50" y="58" text-anchor="middle" font-size="6" fill="#9AA3AD">total</text></svg>
+  <div class="legend" style="justify-content:center">${orden.map(g=>`<span><span class="sw" style="background:${g.c}"></span>${esc(g.n)} ${pctDe(g.v,total)}</span>`).join('')}</div>`;
+}
+function filasMix(list){
+  const positivas = list.filter(s=>sum(s)>0), total = positivas.reduce((a,s)=>a+sum(s),0);
+  return desc(list).map(s=>`<div class="row"><span><span class="sw" style="background:${parte(s)[1]}"></span>${esc(s.title)}</span><span>${energy(sum(s))} · ${pctDe(sum(s),total)}</span></div>`).join('');
+}
 function legend(list){ return `<div class="legend">${list.map((s,i)=>`<span><span class="sw" style="background:${colorOf(s,i)}"></span>${esc(s.title)}</span>`).join('')}</div>`; }
 // El formato depende del tramo que abarca el gráfico, no del periodo elegido: algunos bloques muestran otro rango.
 function label(t, span){ if(!t) return ''; const d=madrid(t), D=864e5; return span<=2*D?pad(d.getHours())+'h':span<=62*D?d.getDate()+'/'+(d.getMonth()+1):span<=400*D?d.toLocaleDateString('es-ES',{month:'short'}):d.getFullYear(); }
@@ -264,7 +289,12 @@ const TABS = {
   balance: ['Balance', () => {
     // REData da 400 al pedir hoy por horas: con «Hoy» se muestra el dato diario de ayer.
     const hoy = state.period==='hoy';
-    block(hoy?'Balance eléctrico (ayer)':'Balance eléctrico','balance/balance-electrico', d=>rows(d, s=>energy(sum(s))), hoy?yesterday():null);
+    block(hoy?'Balance eléctrico (ayer)':'Balance eléctrico','balance/balance-electrico', d=>{
+      const tec = d.filter(s=>/^(renovable|no-renovable)$/i.test(s.group||'') && !/^generación /i.test(s.title));
+      if(!tec.length) return rows(desc(d), s=>energy(sum(s)));
+      const resto = d.filter(s=>!tec.includes(s));
+      return donut(tec)+filasMix(tec)+'<h3 class="meta" style="margin:8px 0 0">SUBTOTALES Y SALDOS</h3>'+rows(desc(resto), s=>energy(sum(s)));
+    }, hoy?yesterday():null);
   }],
   demanda: ['Demanda', () => {
     // demanda/evolucion rechaza time_trunc=hour: con «Hoy» se usa el endpoint en tiempo real.
@@ -277,9 +307,9 @@ const TABS = {
   generacion: ['Generación', () => {
     // Con «Hoy» se muestra el dato diario de ayer: estos endpoints no responden por horas.
     const hoy=state.period==='hoy', r=hoy?yesterday():null, t=x=>hoy?x+' (ayer)':x;
-    block(t('Generación por tecnología'),'generacion/estructura-generacion', d=>{const main=d.filter(s=>!/total/i.test(s.title)); return stackBars(main)+legend(main)+rows(main,s=>energy(sum(s)));}, r);
-    block(t('Renovable vs no renovable'),'generacion/evolucion-renovable-no-renovable', d=>(hoy?'':lineChart(d))+rows(d,s=>energy(sum(s))), r);
-    block(t('Emisiones de CO₂'),'generacion/no-renovables-detalle-emisiones-CO2', d=>rows(d,s=>/MWh/.test(s.title)?nf(last(s).v,3)+' t/MWh':nf(sum(s))+' t'), r);
+    block(t('Generación por tecnología'),'generacion/estructura-generacion', d=>{const main=d.filter(s=>!/total/i.test(s.title)); return donut(main)+(hoy?'':stackBars(desc(main))+legend(desc(main)))+filasMix(main);}, r);
+    block(t('Renovable vs no renovable'),'generacion/evolucion-renovable-no-renovable', d=>(hoy?'':lineChart(d))+rows(desc(d),s=>energy(sum(s))), r);
+    block(t('Emisiones de CO₂'),'generacion/no-renovables-detalle-emisiones-CO2', d=>{const tec=desc(d.filter(s=>!/total|MWh/i.test(s.title))), otros=d.filter(s=>!tec.includes(s)); return rows([...tec,...otros],s=>/MWh/.test(s.title)?nf(last(s).v,3)+' t/MWh':nf(sum(s))+' t');}, r);
   }],
   intercambios: ['Intercambios', () => {
     // Con «Hoy» se muestra el dato diario de ayer.
