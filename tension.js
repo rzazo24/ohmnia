@@ -13,7 +13,14 @@ export function mixDesdeSeries(series) {
     if (!Object.values(v).every(Number.isFinite)) continue;
     const total = Object.values(v).reduce((a, b) => a + b, 0);
     if (total <= 0) return null;
-    return { t, solar: v.solar / total, sincronas: (v.nuclear + v.hidraulica + v.cicloCombinado) / total };
+    const porcentajes = Object.fromEntries(Object.entries(v).map(([c, x]) => [c, x / total]));
+    return {
+      t, total, potencias: v, porcentajes,
+      solar: porcentajes.solar,
+      cicloCombinado: porcentajes.cicloCombinado,
+      sincronas: porcentajes.nuclear + porcentajes.hidraulica + porcentajes.cicloCombinado,
+      renovable: porcentajes.hidraulica + porcentajes.eolica + porcentajes.solar, // «resto» mezcla tecnologías y no cuenta
+    };
   }
   return null;
 }
@@ -32,7 +39,7 @@ export function evaluarTension(senales = {}, umbrales) {
   if (Number.isFinite(precio?.actual) && positivo(precio?.media)) {
     // El precio refleja el mercado, no la seguridad de la red: se informa, pero no puntúa.
     const r = precio.actual / precio.media;
-    if (r > umbrales.precioSobreMedia) informativas.push({ clave: 'precio', texto: `Precio a ${num(r)} veces la media del mes` });
+    if (r > umbrales.precioSobreMedia) informativas.push({ clave: 'precio', texto: `Precio a ${num(r)} veces la media del mes (informativo, no puntúa)` });
   }
   if (positivo(desvio?.real) && positivo(desvio?.prevista)) {
     evaluadas++;
@@ -44,6 +51,10 @@ export function evaluarTension(senales = {}, umbrales) {
     evaluadas++;
     if (mix.solar > umbrales.solarInercia && mix.sincronas < umbrales.sincronasInercia) {
       activas.push({ clave: 'mix', texto: `Poca generación síncrona: solar al ${pct(mix.solar)} % y síncronas al ${pct(mix.sincronas)} %` });
+    }
+    // Indica dependencia del gas, no fragilidad de la red: se informa, pero no puntúa.
+    if (mix.cicloCombinado > umbrales.cicloCombinadoInfo) {
+      informativas.push({ clave: 'ciclo', texto: `Ciclo combinado al ${pct(mix.cicloCombinado)} % (dependencia del gas, informativo)` });
     }
   }
 
@@ -70,7 +81,7 @@ export function senalesDia(datos, semana, u = UMBRALES_DIA) {
 
   const ciclo = peso('Ciclo combinado');
   if (ciclo !== null && ciclo > u.cicloCombinado) {
-    senales.push({ clave: 'ciclo_combinado', texto: `El ciclo combinado aportó el ${pct(ciclo, 1)} % de la generación` });
+    senales.push({ clave: 'dependencia_gas', tipo: 'informativa', texto: `Dependencia del gas: el ciclo combinado aportó el ${pct(ciclo, 1)} % de la generación` });
   }
 
   // En REData el saldo es positivo si se importa y negativo si se exporta.

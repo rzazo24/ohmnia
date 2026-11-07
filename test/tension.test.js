@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluarTension, mixDesdeSeries, senalesDia } from '../tension.js';
 
-const U = { demandaSobrePico: 0.97, precioSobreMedia: 1.5, desvioPrevision: 0.03, solarInercia: 0.4, sincronasInercia: 0.3 };
-const tranquila = { demanda: { actual: 30, pico: 40 }, precio: { actual: 100, media: 100 }, desvio: { real: 100, prevista: 100 }, mix: { solar: 0.1, sincronas: 0.7 } };
+const U = { demandaSobrePico: 0.97, precioSobreMedia: 1.5, desvioPrevision: 0.03, solarInercia: 0.4, sincronasInercia: 0.3, cicloCombinadoInfo: 0.45 };
+const tranquila = { demanda: { actual: 30, pico: 40 }, precio: { actual: 100, media: 100 }, desvio: { real: 100, prevista: 100 }, mix: { solar: 0.1, sincronas: 0.7, cicloCombinado: 0.1 } };
 
 test('0 puntos: Holgada', () => {
   const r = evaluarTension(tranquila, U);
@@ -17,12 +17,19 @@ test('1 punto: Exigida, con el texto de la señal', () => {
 });
 
 test('poca generación síncrona puntúa y lo explica', () => {
-  const r = evaluarTension({ ...tranquila, mix: { solar: 0.45, sincronas: 0.25 } }, U);
+  const r = evaluarTension({ ...tranquila, mix: { solar: 0.45, sincronas: 0.25, cicloCombinado: 0.1 } }, U);
   assert.deepEqual([r.nivel, r.activas[0].texto], ['exigida', 'Poca generación síncrona: solar al 45 % y síncronas al 25 %']);
 });
 
+test('el ciclo combinado informa como dependencia del gas, pero no puntúa', () => {
+  const r = evaluarTension({ ...tranquila, mix: { solar: 0.1, sincronas: 0.7, cicloCombinado: 0.49 } }, U);
+  assert.deepEqual([r.nivel, r.puntos], ['holgada', 0]);
+  assert.equal(r.informativas[0].texto, 'Ciclo combinado al 49 % (dependencia del gas, informativo)');
+  assert.deepEqual(evaluarTension({ ...tranquila, mix: { solar: 0.1, sincronas: 0.7, cicloCombinado: 0.45 } }, U).informativas, []);
+});
+
 test('3 puntos: Tensionada', () => {
-  const r = evaluarTension({ demanda: { actual: 39, pico: 40 }, desvio: { real: 110, prevista: 100 }, mix: { solar: 0.45, sincronas: 0.25 } }, U);
+  const r = evaluarTension({ demanda: { actual: 39, pico: 40 }, desvio: { real: 110, prevista: 100 }, mix: { solar: 0.45, sincronas: 0.25, cicloCombinado: 0.1 } }, U);
   assert.deepEqual([r.nivel, r.puntos], ['tensionada', 3]);
 });
 
@@ -34,10 +41,14 @@ test('sin ESIOS se calcula con el resto e indica datos parciales', () => {
 
 test('mixDesdeSeries usa el último instante común, con datos reales', () => {
   const p = (v, ...t) => t.map(x => ({ t: x, v }));
-  const r = mixDesdeSeries({ hidraulica: p(4444, 'a', 'b'), nuclear: p(5184, 'a', 'b'), cicloCombinado: p(13980, 'a', 'b'), solar: p(117, 'a', 'b'), resto: p(4681, 'a') });
+  const r = mixDesdeSeries({ hidraulica: p(4444, 'a', 'b'), nuclear: p(5184, 'a', 'b'), cicloCombinado: p(13980, 'a', 'b'), eolica: p(1805, 'a', 'b'), solar: p(117, 'a', 'b'), resto: p(2876, 'a') });
   assert.equal(r.t, 'a');
   assert.ok(Math.abs(r.sincronas - 23608 / 28406) < 1e-9);
   assert.ok(Math.abs(r.solar - 117 / 28406) < 1e-9);
+  assert.ok(Math.abs(r.renovable - (4444 + 1805 + 117) / 28406) < 1e-9);
+  assert.ok(Math.abs(r.porcentajes.nuclear - 5184 / 28406) < 1e-9);
+  assert.equal(r.total, 28406);
+  assert.ok(Math.abs(Object.values(r.porcentajes).reduce((a, b) => a + b, 0) - 1) < 1e-9);
 });
 
 test('mixDesdeSeries no calcula si falta una tecnología', () => {
@@ -52,7 +63,7 @@ test('2 puntos: Tensionada', () => {
 test('el precio informa, pero no puntúa', () => {
   const r = evaluarTension({ ...tranquila, precio: { actual: 160, media: 100 } }, U);
   assert.deepEqual([r.nivel, r.puntos], ['holgada', 0]);
-  assert.equal(r.informativas[0].texto, 'Precio a 1,6 veces la media del mes');
+  assert.equal(r.informativas.find(i => i.clave === 'precio').texto, 'Precio a 1,6 veces la media del mes (informativo, no puntúa)');
 });
 
 test('el umbral exacto no suma: debe superarse', () => {
@@ -88,7 +99,14 @@ test('datos reales del 04/11: ciclo combinado sí, exportador no', () => {
     'intercambios/todas-fronteras-programados': [saldo(10074.7), saldo(-35111.8), saldo(-15340), saldo(-1103.4)],
     'demanda/demanda-tiempo-real': [{ serie: 'Real', max: 36512, min: 22664 }],
   };
-  assert.deepEqual(claves(d, 716897), ['ciclo_combinado']);
+  assert.deepEqual(claves(d, 716897), ['dependencia_gas']);
+});
+
+test('en el resumen, el ciclo combinado se describe como dependencia del gas', () => {
+  const [s] = senalesDia({ 'generacion/estructura-generacion': [serie('Ciclo combinado', 0.39)] });
+  assert.equal(s.tipo, 'informativa');
+  assert.match(s.texto, /^Dependencia del gas/);
+  assert.doesNotMatch(s.texto, /tensi/i);
 });
 
 test('saldo positivo: importador', () => {

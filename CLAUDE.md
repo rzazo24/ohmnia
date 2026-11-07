@@ -66,11 +66,11 @@ Otros detalles:
 
 ## Semáforo de tensión
 
-Web, con `UMBRALES` al principio del script de `index.html`: demanda real sobre el pico de 30 días (> 97 %) desvío frente a la prevista (> 3 %) y, con ESIOS, solar > 40 % con síncronas < 30 %. 0 puntos, Holgada; 1, Exigida; 2 o más, Tensionada. El PVPC sobre la media del mes (> 1,5 veces) es informativo y no puntúa. REData no da el mix en tiempo real (`estructura-generacion` con `hour` da error), por eso se usa ESIOS.
+Web, con `UMBRALES` al principio del script de `index.html`: demanda real sobre el pico de 30 días (> 97 %) desvío frente a la prevista (> 3 %) y, con ESIOS, solar > 40 % con síncronas < 30 %. 0 puntos, Holgada; 1, Exigida; 2 o más, Tensionada. El PVPC sobre la media del mes (> 1,5 veces) y el ciclo combinado por encima de `cicloCombinadoInfo` (> 45 %), descrito como dependencia del gas, son informativos y no puntúan. REData no da el mix en tiempo real (`estructura-generacion` con `hour` da error), por eso se usa ESIOS.
 
-ESIOS (cabecera `x-api-key`): indicadores peninsulares 546 hidráulica, 547 carbón, 548 fuel-gas, 549 nuclear, 550 ciclo combinado, 551 eólica, 552 solar (ya incluye 1294 térmica y 1295 fotovoltaica) y 555 resto. No uses 10351 y 10352 como total: no cuadran con las tecnologías.
+ESIOS (cabecera `x-api-key`): indicadores peninsulares 546 hidráulica, 547 carbón, 548 fuel-gas, 549 nuclear, 550 ciclo combinado, 551 eólica, 552 solar (ya incluye 1294 térmica y 1295 fotovoltaica) y 555 resto. No uses 10351 y 10352 como total: no cuadran con las tecnologías. El KPI Renovable y el bloque «Mix en tiempo real (Península)» usan estos datos y vuelven a REData si fallan o tienen más de 30 minutos. El KPI suma hidráulica, eólica y solar; «resto» no cuenta porque mezcla tecnologías.
 
-Cron, con `UMBRALES_DIA` en `tension.js`: ciclo combinado > 25 %, saldo importador, pico > 130 % de la potencia media semanal, y solar > 40 % con síncronas < 30 % («poca generación síncrona»). Se guardan en `tension` del JSON y no suman puntos del semáforo.
+Cron, con `UMBRALES_DIA` en `tension.js`: ciclo combinado > 25 % (informativa, descrita como dependencia del gas, no como tensión), saldo importador, pico > 130 % de la potencia media semanal, y solar > 40 % con síncronas < 30 % («poca generación síncrona»). Se guardan en `tension` del JSON y no suman puntos del semáforo.
 
 ## Despliegue
 
