@@ -68,6 +68,19 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
 .tEstado[data-n="holgada"]{color:var(--green)}.tEstado[data-n="exigida"]{color:#E3A42B}.tEstado[data-n="tensionada"]{color:#E5484D}
 .tSenales{margin:0;padding-left:18px;font-size:14px;color:var(--txt2)}.tSenales:empty{display:none}
 .tLink{padding:0;border:0;background:none;color:var(--blue);font:inherit;text-decoration:underline;cursor:pointer}
+.duo{display:flex;flex-direction:column;gap:16px}
+/* Pantallas anchas: más ancho útil, resumen y semáforo en paralelo y bloques en dos columnas. */
+@media (min-width:1100px){
+  .wrap{max-width:1240px}
+  .duo{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);align-items:start}
+  /* Columnas en vez de rejilla: cada bloque va debajo del anterior y no quedan huecos. */
+  #panel{display:block !important;columns:2;column-gap:12px}
+  #panel>*{break-inside:avoid;margin:0 0 12px}
+  #panel>p.meta{column-span:all}
+}
+.linea{height:160px}
+.linea path,.linea line{vector-effect:non-scaling-stroke}
+@media (min-width:1100px){.linea{height:200px}}
 </style>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
@@ -89,6 +102,7 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
     <div class="tag">La red eléctrica, explicada cada día</div>
   </div>
 
+  <div class="duo">
   <section class="card sum" aria-label="Resumen de ayer">
     <button id="sumBtn" aria-expanded="true">
       <span><strong id="sumTitle" style="font-size:14px;letter-spacing:.04em">AYER EN LA RED</strong><br><span class="meta" id="sumMeta">Resumen IA</span></span>
@@ -105,6 +119,7 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
     <ul id="tSenales" class="tSenales"></ul>
     <div class="meta"><span id="tNota">Estimación de OhmnIA, no es un dato oficial de REE.</span> <button id="tAyuda" type="button" class="tLink">Cómo se calcula</button></div>
   </section>
+  </div>
   <section class="grid2 kpis" aria-label="Indicadores clave">
     <div class="kpi"><span class="l">Demanda</span><span class="v" style="color:var(--blue)" id="kDem">–</span><span class="u" id="kDemU">MW · tiempo real</span></div>
     <div class="kpi"><span class="l">Renovable</span><span class="v" style="color:var(--green)" id="kRen">–</span><span class="u" id="kRenU">% hoy</span></div>
@@ -239,7 +254,7 @@ function lineChart(list, h=130){
   const ts=list.flatMap(s=>s.values.map(v=>+new Date(v.t))), t0=Math.min(...ts), t1=Math.max(...ts);
   const x=t=> t1===t0?W/2:(+new Date(t)-t0)/(t1-t0)*W, y=v=> h-6-((v-min)/((max-min)||1))*(h-12);
   const paths=list.map((s,i)=>`<path d="${s.values.map((v,j)=>(j?'L':'M')+x(v.t).toFixed(1)+','+y(v.v).toFixed(1)).join(' ')}" fill="none" stroke="${colorOf(s,i)}" stroke-width="2"/>`).join('');
-  return `<svg viewBox="0 0 ${W} ${h}" role="img" aria-label="Gráfico de líneas"><g stroke="#232930"><line x1="0" y1="${h/3}" x2="${W}" y2="${h/3}"/><line x1="0" y1="${2*h/3}" x2="${W}" y2="${2*h/3}"/></g>${paths}</svg>
+  return `<svg class="linea" viewBox="0 0 ${W} ${h}" preserveAspectRatio="none" role="img" aria-label="Gráfico de líneas"><g stroke="#232930"><line x1="0" y1="${h/3}" x2="${W}" y2="${h/3}"/><line x1="0" y1="${2*h/3}" x2="${W}" y2="${2*h/3}"/></g>${paths}</svg>
   <div class="meta" style="display:flex;justify-content:space-between"><span>${label(t0,t1-t0)}</span><span>máx ${nf(max)}</span><span>${label(t1,t1-t0)}</span></div>`;
 }
 function stackBars(list, h=130){
