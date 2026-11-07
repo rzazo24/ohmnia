@@ -107,7 +107,7 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
   </section>
   <section class="grid2 kpis" aria-label="Indicadores clave">
     <div class="kpi"><span class="l">Demanda</span><span class="v" style="color:var(--blue)" id="kDem">–</span><span class="u" id="kDemU">MW · tiempo real</span></div>
-    <div class="kpi"><span class="l">Renovable</span><span class="v" style="color:var(--green)" id="kRen">–</span><span class="u">% hoy</span></div>
+    <div class="kpi"><span class="l">Renovable</span><span class="v" style="color:var(--green)" id="kRen">–</span><span class="u" id="kRenU">% hoy</span></div>
     <div class="kpi"><span class="l">Emisiones</span><span class="v" id="kCo2">–</span><span class="u">tCO₂ eq · hoy (prov.)</span></div>
     <div class="kpi"><span class="l">Precio</span><span class="v" style="color:var(--orange)" id="kPre">–</span><span class="u" id="kPreU">€/MWh · ahora</span></div>
   </section>
@@ -121,7 +121,7 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
     <h3>Indicadores</h3>
     <ul>
       <li><strong>Demanda:</strong> potencia demandada en MW, con la hora del dato. Se muestra el penúltimo valor porque el último es provisional.</li>
-      <li><strong>Renovable:</strong> porcentaje de la generación de hoy que procede de fuentes renovables.</li>
+      <li><strong>Renovable:</strong> hidráulica, eólica y solar sobre la generación peninsular en este momento, según ESIOS. «Resto» no cuenta porque mezcla tecnologías, así que la cifra puede quedar algo baja. Si ESIOS falla, muestra el dato de REData para hoy.</li>
       <li><strong>Emisiones:</strong> toneladas de CO₂ equivalente que REData publica para hoy. Es un dato provisional y no un acumulado hasta esta hora, así que puede superar el total de ayer.</li>
       <li><strong>Precio:</strong> último precio disponible en €/MWh.</li>
     </ul>
@@ -142,10 +142,10 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
       <li><strong>Demanda:</strong> supera el 97 % del pico de los últimos 30 días.</li>
       <li><strong>Previsión:</strong> la demanda real se desvía más de un 3 % de la prevista.</li>
       <li><strong>Poca generación síncrona:</strong> en la península, la solar supera el 40 % y nuclear, hidráulica y ciclo combinado no llegan al 30 %. Dato de ESIOS.</li>
-    </ul>
-    <p>Si el PVPC actual supera 1,5 veces la media del mes, se muestra como dato informativo, pero no puntúa, porque refleja el mercado y no la seguridad de la red.</p>
+          </ul>
+    <p>Si el PVPC actual supera 1,5 veces la media del mes, se muestra como dato informativo, pero no puntúa, porque refleja el mercado y no la seguridad de la red. Si el ciclo combinado supera el 45 %, también se informa como dependencia del gas, sin que puntúe.</p>
     <p>Estas señales pueden activarse en un día normal, así que un estado alto no implica un problema. Si falta algún dato, se calcula con los demás y se indica «con datos parciales».</p>
-    <p>El resumen diario puede mencionar otras señales del día anterior: ciclo combinado por encima del 25 % del mix, saldo importador, pico por encima del 130 % de la media semanal y poca generación síncrona (solar por encima del 40 % y nuclear, hidráulica y ciclo combinado por debajo del 30 %).</p>
+    <p>El resumen diario puede mencionar otras señales del día anterior: dependencia del gas (ciclo combinado por encima del 25 % del mix, que no indica tensión), saldo importador, pico por encima del 130 % de la media semanal y poca generación síncrona (solar por encima del 40 % y nuclear, hidráulica y ciclo combinado por debajo del 30 %).</p>
     <h3>Resumen diario</h3>
     <p>«Ayer en la red» es un texto generado por IA cada mañana con los datos del día anterior. Se publica sin revisión humana y puede contener errores, así que comprueba las cifras importantes en los bloques o en REData.</p>
     <h3>Instalar en el iPhone</h3>
@@ -164,7 +164,7 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
 
 <script>
 /* Umbrales del semáforo de tensión: estimación propia, ajustable. */
-const UMBRALES = { demandaSobrePico: 0.97, precioSobreMedia: 1.5, desvioPrevision: 0.03, solarInercia: 0.40, sincronasInercia: 0.30 };
+const UMBRALES = { demandaSobrePico: 0.97, precioSobreMedia: 1.5, desvioPrevision: 0.03, solarInercia: 0.40, sincronasInercia: 0.30, cicloCombinadoInfo: 0.45 };
 
 const API = 'https://apidatos.ree.es/es/datos';
 const USE_PROXY = false; // true => pasa por /api/ree (si el navegador da errores de CORS)
@@ -250,12 +250,12 @@ function stackBars(list, h=130){
 }
 /* ---------- reparto por tecnología ---------- */
 // Cada tecnología conserva su color aunque cambie el orden. El resto se agrupa para no pasar de seis partes.
-const PARTES = {'Ciclo combinado':['Ciclo combinado','#D55181'],'Solar fotovoltaica':['Solar','#C98500'],'Solar térmica':['Solar','#C98500'],'Nuclear':['Nuclear','#9085E9'],'Eólica':['Eólica','#199E70'],'Hidráulica':['Hidráulica','#3987E5']};
+const PARTES = {'Solar':['Solar','#C98500'],'Ciclo combinado':['Ciclo combinado','#D55181'],'Solar fotovoltaica':['Solar','#C98500'],'Solar térmica':['Solar','#C98500'],'Nuclear':['Nuclear','#9085E9'],'Eólica':['Eólica','#199E70'],'Hidráulica':['Hidráulica','#3987E5']};
 const OTRAS = ['Otras','#7C8591'];
 const parte = s => PARTES[s.title] || OTRAS;
 const desc = l => [...l].sort((a,b)=>sum(b)-sum(a));
 const pctDe = (v,t) => nf(v/t*100, 1)+' %';
-function donut(list){
+function donut(list, fmt=energy){
   const positivas = list.filter(s=>sum(s)>0), total = positivas.reduce((a,s)=>a+sum(s),0);
   if(!total) return '';
   const grupos = new Map();
@@ -263,15 +263,15 @@ function donut(list){
   const orden = [...grupos.values()].sort((a,b)=>b.v-a.v);
   let inicio = 0;
   const arcos = orden.map(g=>{
-    const largo = g.v/total*100, hueco = orden.length>1?0.6:0, a=`<circle cx="50" cy="50" r="38" pathLength="100" fill="none" stroke="${g.c}" stroke-width="14" stroke-dasharray="${Math.max(largo-hueco,0.1).toFixed(2)} ${(100-Math.max(largo-hueco,0.1)).toFixed(2)}" stroke-dashoffset="${(-inicio).toFixed(2)}"><title>${esc(g.n)}: ${energy(g.v)} · ${pctDe(g.v,total)}</title></circle>`;
+    const largo = g.v/total*100, hueco = orden.length>1?0.6:0, a=`<circle cx="50" cy="50" r="38" pathLength="100" fill="none" stroke="${g.c}" stroke-width="14" stroke-dasharray="${Math.max(largo-hueco,0.1).toFixed(2)} ${(100-Math.max(largo-hueco,0.1)).toFixed(2)}" stroke-dashoffset="${(-inicio).toFixed(2)}"><title>${esc(g.n)}: ${fmt(g.v)} · ${pctDe(g.v,total)}</title></circle>`;
     inicio += largo; return a;
   }).join('');
-  return `<svg viewBox="0 0 100 100" style="max-width:220px;margin:0 auto" role="img" aria-label="Reparto: ${esc(orden.map(g=>g.n+' '+pctDe(g.v,total)).join(', '))}"><g transform="rotate(-90 50 50)">${arcos}</g><text x="50" y="48" text-anchor="middle" font-size="9" fill="#E6E8EB">${energy(total)}</text><text x="50" y="58" text-anchor="middle" font-size="6" fill="#9AA3AD">total</text></svg>
+  return `<svg viewBox="0 0 100 100" style="max-width:220px;margin:0 auto" role="img" aria-label="Reparto: ${esc(orden.map(g=>g.n+' '+pctDe(g.v,total)).join(', '))}"><g transform="rotate(-90 50 50)">${arcos}</g><text x="50" y="48" text-anchor="middle" font-size="9" fill="#E6E8EB">${fmt(total)}</text><text x="50" y="58" text-anchor="middle" font-size="6" fill="#9AA3AD">total</text></svg>
   <div class="legend" style="justify-content:center">${orden.map(g=>`<span><span class="sw" style="background:${g.c}"></span>${esc(g.n)} ${pctDe(g.v,total)}</span>`).join('')}</div>`;
 }
-function filasMix(list){
+function filasMix(list, fmt=energy){
   const positivas = list.filter(s=>sum(s)>0), total = positivas.reduce((a,s)=>a+sum(s),0);
-  return desc(list).map(s=>`<div class="row"><span><span class="sw" style="background:${parte(s)[1]}"></span>${esc(s.title)}</span><span>${energy(sum(s))} · ${pctDe(sum(s),total)}</span></div>`).join('');
+  return desc(list).map(s=>`<div class="row"><span><span class="sw" style="background:${parte(s)[1]}"></span>${esc(s.title)}</span><span>${fmt(sum(s))} · ${pctDe(sum(s),total)}</span></div>`).join('');
 }
 function legend(list){ return `<div class="legend">${list.map((s,i)=>`<span><span class="sw" style="background:${colorOf(s,i)}"></span>${esc(s.title)}</span>`).join('')}</div>`; }
 // El formato depende del tramo que abarca el gráfico, no del periodo elegido: algunos bloques muestran otro rango.
@@ -284,6 +284,22 @@ async function block(title, path, render, r){
   document.getElementById('panel').appendChild(el);
   try{ const d=await ree(path, r||range(state.period)); el.innerHTML=`<h2>${title}</h2>`+(d.length?render(d):'<p class="muted">Sin datos para este periodo.</p>'); }
   catch(e){ el.innerHTML=`<h2>${title}</h2><p class="muted">No disponible para este periodo (${esc(e.message)}).</p>`; }
+}
+// Mix de ESIOS, o null si falla o el dato es antiguo. Compartido por el semáforo, el indicador y Generación.
+function esiosMix(){
+  const clave = '/api/esios';
+  if(!cache.has(clave)) cache.set(clave, fetch(clave).then(r=>r.ok?r.json():null).then(m=>m&&!m.antiguo?m:null).catch(()=>null));
+  return cache.get(clave);
+}
+const NOMBRES_MIX = {hidraulica:'Hidráulica',carbon:'Carbón',fuelGas:'Fuel-gas',nuclear:'Nuclear',cicloCombinado:'Ciclo combinado',eolica:'Eólica',solar:'Solar',resto:'Resto'};
+function blockMixVivo(alternativa){
+  const el=document.createElement('section'); el.className='card'; el.innerHTML='<h2>Mix en tiempo real (Península)</h2><p class="muted">Cargando…</p>';
+  document.getElementById('panel').appendChild(el);
+  esiosMix().then(m=>{
+    if(!m){ const panel=document.getElementById('panel'), n=panel.children.length; alternativa(); const nuevo=panel.children[n]; if(el.parentNode&&nuevo) el.replaceWith(nuevo); else el.remove(); return; }
+    const mw = v => nf(v)+' MW', lista = Object.entries(m.potencias).map(([c,v])=>({title:NOMBRES_MIX[c]||c, values:[{v}]})), h=madrid(m.t);
+    el.innerHTML = `<h2>Mix en tiempo real (Península)</h2><p class="meta" style="margin:0">Dato de las ${pad(h.getHours())}:${pad(h.getMinutes())} · ESIOS</p>`+donut(lista,mw)+filasMix(lista,mw);
+  });
 }
 const TABS = {
   balance: ['Balance', () => {
@@ -312,7 +328,8 @@ const TABS = {
   generacion: ['Generación', () => {
     // Con «Hoy» se muestra el dato diario de ayer: estos endpoints no responden por horas.
     const hoy=state.period==='hoy', r=hoy?yesterday():null, t=x=>hoy?x+' (ayer)':x;
-    block(t('Generación por tecnología'),'generacion/estructura-generacion', d=>{const main=d.filter(s=>!/total/i.test(s.title)); return donut(main)+(hoy?'':stackBars(desc(main))+legend(desc(main)))+filasMix(main);}, r);
+    const mixAyer = () => block(t('Generación por tecnología'),'generacion/estructura-generacion', d=>{const main=d.filter(s=>!/total/i.test(s.title)); return donut(main)+(hoy?'':stackBars(desc(main))+legend(desc(main)))+filasMix(main);}, r);
+    if(hoy) blockMixVivo(mixAyer); else mixAyer();
     block(t('Renovable vs no renovable'),'generacion/evolucion-renovable-no-renovable', d=>(hoy?'':lineChart(d))+rows(desc(d),s=>energy(sum(s))), r);
     block(t('Emisiones de CO₂'),'generacion/no-renovables-detalle-emisiones-CO2', d=>{const tec=desc(d.filter(s=>!/total|MWh/i.test(s.title))), otros=d.filter(s=>!tec.includes(s)); return rows([...tec,...otros],s=>/MWh/.test(s.title)?nf(last(s).v,3)+' t/MWh':nf(sum(s))+' t');}, r);
   }],
@@ -367,7 +384,11 @@ async function kpis(){
   await Promise.all([
     // Solo la serie «Real»: el endpoint también trae Prevista y Programada.
     ree('demanda/demanda-tiempo-real', today).then(d=>{const s=d.find(x=>/^real$/i.test(x.title)); if(!s) throw new Error('sin serie Real'); const u=settled(s), h=madrid(u.t); set('kDem', nf(u.v)); set('kDemU', `MW · ${pad(h.getHours())}:${pad(h.getMinutes())}`);}).catch(()=>ok=false),
-    ree('generacion/evolucion-renovable-no-renovable', dayT).then(d=>{const r=d.find(s=>/^renovable/i.test(s.title)); set('kRen', r? nf((last(r).p??0)*100,1):'–');}).catch(()=>ok=false),
+    esiosMix().then(m=>{
+      if(m){ set('kRen', nf(m.renovable*100,1)); set('kRenU','% ahora · Península'); return; }
+      set('kRenU','% hoy');
+      return ree('generacion/evolucion-renovable-no-renovable', dayT).then(d=>{const r=d.find(s=>/^renovable/i.test(s.title)); set('kRen', r? nf((last(r).p??0)*100,1):'–');});
+    }).catch(()=>ok=false),
     ree('generacion/no-renovables-detalle-emisiones-CO2', dayT).then(d=>{const t=d.find(s=>/total/i.test(s.title))||null; set('kCo2', nf(t?sum(t):d.filter(s=>!/MWh/.test(s.title)).reduce((a,s)=>a+sum(s),0)));}).catch(()=>ok=false),
     ree('mercados/precios-mercados-tiempo-real', today).then(d=>{const s=d.find(x=>/PVPC/i.test(x.title))||d[0]; set('kPre', nf(current(s).v,1)); document.getElementById('kPreU').textContent=`€/MWh · ${s.title}`;}).catch(()=>ok=false)
   ]);
@@ -422,7 +443,7 @@ async function tensionAhora(){
     const { evaluarTension } = await import('/tension.js');
     const [hoy, pico, mes, esios] = await Promise.allSettled([
       ree('demanda/demanda-tiempo-real', range('hoy')), picoDemanda(), ree('mercados/precios-mercados-tiempo-real', {...range('mes'),trunc:'hour'}),
-      fetch('/api/esios').then(r=>r.ok?r.json():null)
+      esiosMix()
     ]);
     const senales = {};
     const real = hoy.value?.find(x=>/^real$/i.test(x.title)), prev = hoy.value?.find(x=>/^prevista$/i.test(x.title));
@@ -433,12 +454,12 @@ async function tensionAhora(){
     }
     const pvpc = mes.value?.find(x=>/PVPC/i.test(x.title));
     if(pvpc) senales.precio = {actual:current(pvpc).v, media:pvpc.values.reduce((a,x)=>a+x.v,0)/pvpc.values.length};
-    if(esios.value && !esios.value.antiguo) senales.mix = esios.value;
+    if(esios.value) senales.mix = esios.value;
     const r = evaluarTension(senales, UMBRALES);
     if(!r.nivel) throw new Error('sin datos');
     est.dataset.n = r.nivel;
     est.textContent = {holgada:'Holgada', exigida:'Exigida', tensionada:'Tensionada'}[r.nivel];
-    lista.innerHTML = [...r.activas.map(a=>a.texto), ...r.informativas.map(a=>a.texto+' (informativo, no puntúa)')].map(t=>`<li>${esc(t)}</li>`).join('');
+    lista.innerHTML = [...r.activas.map(a=>a.texto), ...r.informativas.map(a=>a.texto)].map(t=>`<li>${esc(t)}</li>`).join('');
     nota.textContent = (r.parcial ? 'Con datos parciales. ' : '') + base;
   }catch(e){
     delete est.dataset.n; est.textContent = 'No disponible'; lista.innerHTML = ''; nota.textContent = base;

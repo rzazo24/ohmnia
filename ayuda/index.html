@@ -89,11 +89,11 @@ th{color:var(--txt);border-top:0}
       <tr><td>Poca generación síncrona</td><td>en la península, la solar supera el 40 % y nuclear, hidráulica y ciclo combinado no llegan al 30 % (dato de ESIOS)</td></tr>
     </table></div>
     <p style="margin-top:12px">Sin señales activas, el estado es <strong>Holgada</strong>; con una, <strong>Exigida</strong>; con dos o más, <strong>Tensionada</strong>. Estas señales pueden activarse en un día normal, así que un estado alto no implica un problema.</p>
-    <p>Si el PVPC supera 1,5 veces la media del mes, aparece como dato informativo, pero no puntúa, porque refleja el mercado y no la seguridad de la red. Si falta un dato, verás «con datos parciales».</p>
+    <p>Si el PVPC supera 1,5 veces la media del mes, aparece como dato informativo, pero no puntúa, porque refleja el mercado y no la seguridad de la red. Si el ciclo combinado supera el 45 % de la generación peninsular, según ESIOS, se muestra como dependencia del gas, y tampoco puntúa. Si falta un dato, verás «con datos parciales».</p>
     <h3>Señales del resumen diario</h3>
     <p>El resumen puede comentar otras señales del día anterior. No cambian el semáforo.</p>
     <ul>
-      <li>El ciclo combinado supera el 25 % de la generación.</li>
+      <li>Dependencia del gas: el ciclo combinado supera el 25 % de la generación. Es informativa y no indica tensión.</li>
       <li>España es importadora neta en los intercambios programados.</li>
       <li>El pico supera el 130 % de la potencia media de la semana anterior.</li>
       <li>Poca generación síncrona: solar por encima del 40 % y nuclear, hidráulica y ciclo combinado por debajo del 30 %.</li>
@@ -105,7 +105,7 @@ th{color:var(--txt);border-top:0}
     <h3>Demanda</h3>
     <p>Potencia demandada en MW, con la hora del dato. Muestra el penúltimo valor de la serie real, porque el último es provisional y suele corregirse a los pocos minutos.</p>
     <h3>Renovable</h3>
-    <p>Porcentaje de la generación de hoy procedente de fuentes renovables, según lo publicado por REData hasta el momento.</p>
+    <p>Hidráulica, eólica y solar sobre la generación peninsular en este momento, según ESIOS. «Resto» no se cuenta porque mezcla tecnologías renovables y no renovables, así que la cifra puede quedar algo por debajo de la real. La hidráulica puede incluir el bombeo. Si ESIOS falla, muestra el porcentaje de hoy según REData.</p>
     <h3>Emisiones</h3>
     <p>Toneladas de CO₂ equivalente que REData publica para hoy. Es un dato provisional y no un acumulado hasta esta hora, así que puede superar el total de ayer.</p>
     <h3>Precio</h3>
@@ -139,7 +139,9 @@ th{color:var(--txt);border-top:0}
 
   <section id="generacion">
     <h2>Generación</h2>
-    <p>Con «Hoy», estos bloques muestran el dato de ayer.</p>
+    <p>Con «Hoy», estos bloques muestran el dato de ayer, salvo el mix en tiempo real.</p>
+    <h3>Mix en tiempo real (Península)</h3>
+    <p>Aparece con «Hoy». Potencia de cada tecnología en este momento, según ESIOS, con su porcentaje y la hora del dato. Si ESIOS falla o el dato es antiguo, se muestra la generación de ayer.</p>
     <h3>Generación por tecnología</h3>
     <p>Energía producida por cada tecnología, de mayor a menor y con su porcentaje. El gráfico circular agrupa las más pequeñas en «Otras». Con «Mes» y «Año» se añade su evolución en barras.</p>
     <h3>Renovable vs no renovable</h3>
