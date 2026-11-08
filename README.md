@@ -25,7 +25,7 @@ Dashboard del sistema eléctrico español con datos de [REData](https://www.ree.
 | `tension.js` | Cálculo del semáforo, compartido entre la web y el cron |
 | `ayuda/index.html` | Guía detallada |
 | `api/ree.js` | Proxy opcional hacia REData (se activa con `USE_PROXY` en `index.html`) |
-| `vercel.json` | Crons, duración máxima de la función y rewrite del resumen |
+| `vercel.json` | Programación del resumen, duración máxima de la función y rewrite del resumen |
 
 ## Despliegue
 
@@ -47,7 +47,7 @@ Dashboard del sistema eléctrico español con datos de [REData](https://www.ree.
 
 ## Resumen diario
 
-Vercel Cron funciona en UTC, así que hay tres entradas (08:30, 09:30 y 10:30 UTC). La función actúa cuando en Madrid es la hora 10, lo que cubre el cambio de horario, y a las 11 y a las 12 reintenta solo si el resumen de ayer aún no existe.
+Se lanza con Vercel Schedules en hora de Madrid: a las 10:30 y, como reintento, a las 11:30 y a las 12:30, con hasta 15 minutos de margen. Los reintentos solo actúan si el resumen de ayer aún no existe.
 
 Para lanzarlo a mano:
 

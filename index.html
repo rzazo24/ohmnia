@@ -72,7 +72,7 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
 /* Pantallas anchas: más ancho útil, resumen y semáforo en paralelo y bloques en dos columnas. */
 @media (min-width:1100px){
   .wrap{max-width:1240px}
-  .duo{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);align-items:start}
+  .duo{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);align-items:stretch}
   /* Columnas en vez de rejilla: cada bloque va debajo del anterior y no quedan huecos. */
   #panel{display:block !important;columns:2;column-gap:12px}
   #panel>*{break-inside:avoid;margin:0 0 12px}
@@ -385,9 +385,17 @@ function renderNav(){
 function renderPanel(){ const p=document.getElementById('panel'); p.setAttribute('aria-labelledby','tab-'+state.tab); p.innerHTML=''; TABS[state.tab][1](); p.insertAdjacentHTML('beforeend',`<p class="meta" style="margin:0"><a href="/ayuda/#${state.tab}" style="color:var(--blue)">Qué significa esta pestaña</a></p>`); }
 document.getElementById('periods').onclick = e => { const p=e.target.dataset.p; if(p){ state.period=p; renderNav(); renderPanel(); } };
 document.getElementById('tabs').onclick = e => { const t=e.target.dataset.t; if(t){ state.tab=t; renderNav(); renderPanel(); } };
-document.getElementById('sumBtn').onclick = () => {
-  const b=document.getElementById('sumBody'), open=b.hidden; b.hidden=!open;
+// El resumen recuerda si lo plegaste; solo se abre solo cuando llega uno nuevo.
+const RESUMEN_KEY = 'ohmnia.resumen';
+const leerResumen = () => { try{ return JSON.parse(localStorage.getItem(RESUMEN_KEY)) || {}; }catch(e){ return {}; } };
+const guardarResumen = v => { try{ localStorage.setItem(RESUMEN_KEY, JSON.stringify({...leerResumen(), ...v})); }catch(e){} };
+function abrirResumen(open){
+  document.getElementById('sumBody').hidden = !open;
   document.getElementById('sumBtn').setAttribute('aria-expanded', open); document.getElementById('sumIcon').textContent = open?'−':'+';
+}
+abrirResumen(!leerResumen().plegado);
+document.getElementById('sumBtn').onclick = () => {
+  const open = document.getElementById('sumBody').hidden; abrirResumen(open); guardarResumen({plegado: !open});
 };
 
 /* ---------- indicadores clave ---------- */
@@ -417,6 +425,7 @@ async function summary(){
     const r = await fetch('resumenes/latest.json',{cache:'no-store'}); if(!r.ok) throw 0;
     const j = await r.json();
     document.getElementById('sumText').textContent = j.texto;
+    if(j.fecha && j.fecha !== leerResumen().visto){ abrirResumen(true); guardarResumen({visto: j.fecha, plegado: false}); }
     const alDia = j.fecha === ayerEs();
     if(!alDia) document.getElementById('sumTitle').textContent = 'ÚLTIMO RESUMEN';
     document.getElementById('sumMeta').textContent = alDia ? `Resumen IA · ${j.fecha} · publicado ${j.publicado||''}` : `Resumen del ${j.fecha} (aún no se ha publicado el de ayer)`;

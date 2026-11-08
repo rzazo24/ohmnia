@@ -51,6 +51,15 @@ test('mixDesdeSeries usa el último instante común, con datos reales', () => {
   assert.ok(Math.abs(Object.values(r.porcentajes).reduce((a, b) => a + b, 0) - 1) < 1e-9);
 });
 
+test('mixDesdeSeries no resta el bombeo: la hidráulica negativa cuenta como 0', () => {
+  const p = v => [{ t: 'a', v }];
+  const r = mixDesdeSeries({ hidraulica: p(-1451), nuclear: p(6081), cicloCombinado: p(3632), eolica: p(7146), solar: p(8967), resto: p(2205) });
+  assert.equal(r.total, 28031);
+  assert.equal(r.porcentajes.hidraulica, 0);
+  assert.ok(Math.abs(r.renovable - (7146 + 8967) / 28031) < 1e-9);
+  assert.ok(Math.abs(r.sincronas - (6081 + 3632) / 28031) < 1e-9);
+});
+
 test('mixDesdeSeries no calcula si falta una tecnología', () => {
   assert.equal(mixDesdeSeries({ solar: [{ t: 'a', v: 1 }], nuclear: [] }), null);
 });

@@ -11,6 +11,8 @@ export function mixDesdeSeries(series) {
   for (const t of instantes) {
     const v = Object.fromEntries(Object.entries(series).map(([c, l]) => [c, l.find(p => p.t === t)?.v]));
     if (!Object.values(v).every(Number.isFinite)) continue;
+    // Un valor negativo es consumo, como el bombeo en la hidráulica, no generación: cuenta como 0.
+    for (const c in v) v[c] = Math.max(0, v[c]);
     const total = Object.values(v).reduce((a, b) => a + b, 0);
     if (total <= 0) return null;
     const porcentajes = Object.fromEntries(Object.entries(v).map(([c, x]) => [c, x / total]));

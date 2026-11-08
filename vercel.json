@@ -1,18 +1,24 @@
 {
-  "crons": [
-    {
+  "schedules": {
+    "resumen-diario": {
+      "schedule": "30 10 * * *",
+      "timezone": "Europe/Madrid",
       "path": "/api/cron/resumen",
-      "schedule": "30 8 * * *"
+      "requestMethod": "GET"
     },
-    {
+    "resumen-reintento-1": {
+      "schedule": "30 11 * * *",
+      "timezone": "Europe/Madrid",
       "path": "/api/cron/resumen",
-      "schedule": "30 9 * * *"
+      "requestMethod": "GET"
     },
-    {
+    "resumen-reintento-2": {
+      "schedule": "30 12 * * *",
+      "timezone": "Europe/Madrid",
       "path": "/api/cron/resumen",
-      "schedule": "30 10 * * *"
+      "requestMethod": "GET"
     }
-  ],
+  },
   "functions": {
     "api/cron/resumen.js": {
       "maxDuration": 120

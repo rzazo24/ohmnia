@@ -1,6 +1,6 @@
 // Cron diario: descarga los datos de ayer de REData, pide un resumen a Claude y lo guarda en Vercel Blob.
-// Vercel Cron va en UTC (08:30, 09:30 y 10:30): se ejecuta a las 10 de Madrid y, a las 11 y a las 12,
-// reintenta solo si el resumen de ayer aún no existe.
+// Vercel Schedules lo lanza a las 10:30, 11:30 y 12:30 de Madrid, con hasta 15 minutos de margen.
+// A las 10 se ejecuta; a las 11 y a las 12 reintenta solo si el resumen de ayer aún no existe.
 import Anthropic from '@anthropic-ai/sdk';
 import { get, put } from '@vercel/blob';
 import { senalesDia } from '../../tension.js';
