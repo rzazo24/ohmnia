@@ -68,14 +68,10 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
 .tEstado[data-n="holgada"]{color:var(--green)}.tEstado[data-n="exigida"]{color:#E3A42B}.tEstado[data-n="tensionada"]{color:#E5484D}
 .tSenales{margin:0;padding-left:18px;font-size:14px;color:var(--txt2)}.tSenales:empty{display:none}
 .tMedidas{display:flex;flex-direction:column;gap:12px}.tMedidas:empty{display:none}
-.tHint{display:none}
-/* En pantallas estrechas, los medidores se despliegan al tocar la tarjeta. */
-@media (max-width:1099px){
-  .tension.conMedidas{cursor:pointer}
-  .tension:not(.abierta) .tMedidas{display:none}
-  .tension.conMedidas .tHint{display:block}
-  .tension.abierta .tHint{display:none}
-}
+.tDer{display:flex;align-items:center;gap:10px}
+.tToggle{flex:none;min-width:32px;min-height:32px;padding:0;border:0;background:none;color:var(--blue);font:18px/1 var(--mono);cursor:pointer}
+.tToggle[hidden]{display:none}
+.tension:not(.abierta) .tMedidas{display:none}
 .med{display:flex;flex-direction:column;gap:5px}
 .medTop{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--txt2)}
 .medTop b{font-family:var(--mono);font-weight:500;color:var(--txt)}
@@ -132,10 +128,9 @@ dialog.help::backdrop{background:rgba(0,0,0,.65)}
   </section>
 
   <section class="card tension" aria-label="Tensión de la red">
-    <div class="tHead"><strong>TENSIÓN DE LA RED <span class="meta">(estimación)</span></strong><span id="tEstado" class="tEstado">Calculando…</span></div>
+    <div class="tHead"><strong>TENSIÓN DE LA RED <span class="meta">(estimación)</span></strong><span class="tDer"><span id="tEstado" class="tEstado">Calculando…</span><button id="tToggle" class="tToggle" type="button" aria-controls="tMedidas" aria-expanded="false" aria-label="Mostrar medidores" hidden>+</button></span></div>
     <ul id="tSenales" class="tSenales"></ul>
     <div id="tMedidas" class="tMedidas"></div>
-    <div class="tHint meta" aria-hidden="true">Toca para ver el detalle ▾</div>
     <div class="meta"><span id="tNota">Estimación de OhmnIA, no es un dato oficial de REE.</span> <button id="tAyuda" type="button" class="tLink">Cómo se calcula</button></div>
   </section>
   </div>
@@ -506,7 +501,7 @@ async function tensionAhora(){
     nota.textContent = (r.parcial ? 'Con datos parciales. ' : '') + base;
     // Medidores: valor actual (barra) frente al umbral (marca vertical).
     const p = v => nf(v*100, v < 0.1 ? 1 : 0)+' %';
-    document.querySelector('.tension').classList.toggle('conMedidas', r.medidas.length > 0);
+    document.getElementById('tToggle').hidden = !r.medidas.length;
     document.getElementById('tMedidas').innerHTML = r.medidas.map(m=>{
       const ancho = Math.min(m.valor/m.max, 1)*100, marca = m.umbral/m.max*100;
       const pie = (m.sentido==='menor' ? 'Señal por debajo del ' : 'Señal por encima del ')+p(m.umbral) + (m.superado ? ' · superado' : '');
@@ -516,17 +511,17 @@ async function tensionAhora(){
         <div class="medPie">${pie}</div></div>`;
     }).join('');
   }catch(e){
-    delete est.dataset.n; est.textContent = 'No disponible'; lista.innerHTML = ''; document.getElementById('tMedidas').innerHTML = ''; document.querySelector('.tension').classList.remove('conMedidas'); nota.textContent = base;
+    delete est.dataset.n; est.textContent = 'No disponible'; lista.innerHTML = ''; document.getElementById('tMedidas').innerHTML = ''; document.getElementById('tToggle').hidden = true; nota.textContent = base;
   }
 }
-{
-  const tarjeta = document.querySelector('.tension');
-  tarjeta.addEventListener('click', e => {
-    if(e.target.closest('button,a') || !tarjeta.classList.contains('conMedidas') || matchMedia('(min-width:1100px)').matches) return;
-    tarjeta.classList.toggle('abierta');
-    tarjeta.setAttribute('aria-expanded', tarjeta.classList.contains('abierta'));
-  });
+// Medidores: abiertos de entrada en pantallas anchas y plegados en el móvil; el botón + / − los alterna.
+function abrirMedidores(open){
+  const t=document.querySelector('.tension'), b=document.getElementById('tToggle');
+  t.classList.toggle('abierta', open); b.textContent = open?'−':'+';
+  b.setAttribute('aria-expanded', open); b.setAttribute('aria-label', open?'Ocultar medidores':'Mostrar medidores');
 }
+abrirMedidores(matchMedia('(min-width:1100px)').matches);
+document.getElementById('tToggle').onclick = () => abrirMedidores(!document.querySelector('.tension').classList.contains('abierta'));
 document.getElementById('tAyuda').onclick = () => { document.getElementById('help').showModal(); document.getElementById('helpTension').scrollIntoView(); };
 
 const help=document.getElementById('help');
