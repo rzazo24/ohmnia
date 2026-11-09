@@ -30,12 +30,16 @@ export function mixDesdeSeries(series) {
 // senales: { demanda: {actual, pico}, precio: {actual, media}, desvio: {real, prevista}, mix: {solar, sincronas} }; cualquiera puede faltar.
 export function evaluarTension(senales = {}, umbrales) {
   const { demanda, precio, desvio, mix } = senales;
-  const activas = [], informativas = [];
+  const activas = [], informativas = [], medidas = [];
   let evaluadas = 0;
+  // Cada medida es un valor frente a su umbral, para dibujarlo en la web. `max` fija la escala de la barra.
+  const medir = (clave, etiqueta, valor, umbral, sentido, max) =>
+    medidas.push({ clave, etiqueta, valor, umbral, sentido, max: Math.max(max, valor), superado: sentido === 'menor' ? valor < umbral : valor > umbral });
 
   if (positivo(demanda?.actual) && positivo(demanda?.pico)) {
     evaluadas++;
     const r = demanda.actual / demanda.pico;
+    medir('demanda', 'Demanda frente al pico de 30 días', r, umbrales.demandaSobrePico, 'mayor', 1.1);
     if (r > umbrales.demandaSobrePico) activas.push({ clave: 'demanda', texto: `Demanda al ${pct(r)} % del pico de 30 días` });
   }
   if (Number.isFinite(precio?.actual) && positivo(precio?.media)) {
@@ -46,11 +50,14 @@ export function evaluarTension(senales = {}, umbrales) {
   if (positivo(desvio?.real) && positivo(desvio?.prevista)) {
     evaluadas++;
     const r = Math.abs(desvio.real - desvio.prevista) / desvio.prevista;
+    medir('desvio', 'Desvío frente a la previsión', r, umbrales.desvioPrevision, 'mayor', umbrales.desvioPrevision * 2);
     if (r > umbrales.desvioPrevision) activas.push({ clave: 'desvio', texto: `Desvío del ${pct(r, 1)} % frente a la previsión` });
   }
 
   if (Number.isFinite(mix?.solar) && Number.isFinite(mix?.sincronas)) {
     evaluadas++;
+    medir('solar', 'Solar en la generación', mix.solar, umbrales.solarInercia, 'mayor', 1);
+    medir('sincronas', 'Generación síncrona', mix.sincronas, umbrales.sincronasInercia, 'menor', 1);
     if (mix.solar > umbrales.solarInercia && mix.sincronas < umbrales.sincronasInercia) {
       activas.push({ clave: 'mix', texto: `Poca generación síncrona: solar al ${pct(mix.solar)} % y síncronas al ${pct(mix.sincronas)} %` });
     }
@@ -62,7 +69,7 @@ export function evaluarTension(senales = {}, umbrales) {
 
   const puntos = activas.length;
   const nivel = !evaluadas ? null : puntos === 0 ? 'holgada' : puntos === 1 ? 'exigida' : 'tensionada';
-  return { nivel, puntos, activas, informativas, parcial: evaluadas > 0 && evaluadas < 3, evaluadas };
+  return { nivel, puntos, activas, informativas, medidas, parcial: evaluadas > 0 && evaluadas < 3, evaluadas };
 }
 
 export const UMBRALES_DIA = {

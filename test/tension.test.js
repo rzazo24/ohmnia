@@ -64,6 +64,16 @@ test('mixDesdeSeries no calcula si falta una tecnología', () => {
   assert.equal(mixDesdeSeries({ solar: [{ t: 'a', v: 1 }], nuclear: [] }), null);
 });
 
+test('medidas: valor, umbral y si se supera, para los medidores', () => {
+  const r = evaluarTension({ demanda: { actual: 30, pico: 40 }, desvio: { real: 105, prevista: 100 }, mix: { solar: 0.45, sincronas: 0.35, cicloCombinado: 0.1 } }, U);
+  const m = Object.fromEntries(r.medidas.map(x => [x.clave, x]));
+  assert.deepEqual(Object.keys(m), ['demanda', 'desvio', 'solar', 'sincronas']);
+  assert.equal(m.demanda.valor, 0.75); assert.equal(m.demanda.superado, false);
+  assert.equal(m.desvio.superado, true); assert.ok(m.desvio.max >= m.desvio.valor);
+  assert.equal(m.solar.superado, true); assert.equal(m.sincronas.superado, false);
+  assert.equal(r.puntos, 1); // solo el desvío: la solar sola no basta
+});
+
 test('2 puntos: Tensionada', () => {
   const r = evaluarTension({ ...tranquila, demanda: { actual: 39, pico: 40 }, desvio: { real: 110, prevista: 100 } }, U);
   assert.deepEqual([r.nivel, r.puntos], ['tensionada', 2]);
