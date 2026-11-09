@@ -504,7 +504,7 @@ async function tensionAhora(){
     document.getElementById('tToggle').hidden = !r.medidas.length;
     document.getElementById('tMedidas').innerHTML = r.medidas.map(m=>{
       const ancho = Math.min(m.valor/m.max, 1)*100, marca = m.umbral/m.max*100;
-      const pie = (m.sentido==='menor' ? 'Señal por debajo del ' : 'Señal por encima del ')+p(m.umbral) + (m.superado ? ' · superado' : '');
+      const pie = (m.sentido==='menor' ? 'Umbral: por debajo del ' : 'Umbral: por encima del ')+p(m.umbral) + (m.conjunta ? ' · solo cuenta junto con '+(m.clave==='solar'?'la síncrona':'la solar') : '') + (m.superado ? ' · señal activa' : '');
       return `<div class="med${m.superado?' supera':''}" role="img" aria-label="${esc(m.etiqueta)}: ${p(m.valor)}. ${esc(pie)}">
         <div class="medTop"><span>${esc(m.etiqueta)}</span><b>${p(m.valor)}</b></div>
         <div class="medBar"><div class="medFill" style="width:${ancho.toFixed(1)}%"></div><div class="medTick" style="left:calc(${marca.toFixed(1)}% - 1px)"></div></div>

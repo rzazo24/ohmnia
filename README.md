@@ -47,7 +47,7 @@ Dashboard del sistema eléctrico español con datos de [REData](https://www.ree.
 
 ## Resumen diario
 
-Se lanza con Vercel Schedules en hora de Madrid: a las 10:30 y, como reintento, a las 11:30 y a las 12:30, con hasta 15 minutos de margen. Los reintentos solo actúan si el resumen de ayer aún no existe.
+Se lanza con Vercel Schedules en hora de Madrid: a las 10:30 y, como reintento, a las 11:30 y a las 12:30, con hasta 15 minutos de margen. Cada ejecución, también la de las 10:30, solo actúa si el resumen de ayer aún no existe, así que un duplicado no lo repite. Con `?force=1` se regenera igualmente.
 
 Para lanzarlo a mano:
 

@@ -70,8 +70,15 @@ test('medidas: valor, umbral y si se supera, para los medidores', () => {
   assert.deepEqual(Object.keys(m), ['demanda', 'desvio', 'solar', 'sincronas']);
   assert.equal(m.demanda.valor, 0.75); assert.equal(m.demanda.superado, false);
   assert.equal(m.desvio.superado, true); assert.ok(m.desvio.max >= m.desvio.valor);
-  assert.equal(m.solar.superado, true); assert.equal(m.sincronas.superado, false);
+  // Solar supera su umbral, pero la síncrona no: la señal no está activa y ninguna barra se marca.
+  assert.equal(m.solar.superado, false); assert.equal(m.sincronas.superado, false);
+  assert.equal(m.solar.conjunta, true);
   assert.equal(r.puntos, 1); // solo el desvío: la solar sola no basta
+});
+
+test('las barras de solar y síncronas se marcan juntas cuando la señal está activa', () => {
+  const r = evaluarTension({ mix: { solar: 0.45, sincronas: 0.25, cicloCombinado: 0.1 } }, U);
+  assert.deepEqual(r.medidas.map(m => m.superado), [true, true]);
 });
 
 test('2 puntos: Tensionada', () => {

@@ -72,10 +72,12 @@ ESIOS (cabecera `x-api-key`): indicadores peninsulares 546 hidráulica, 547 carb
 
 Cron, con `UMBRALES_DIA` en `tension.js`: ciclo combinado > 25 % (informativa, descrita como dependencia del gas, no como tensión), saldo importador, pico > 130 % de la potencia media semanal, y solar > 40 % con síncronas < 30 % («poca generación síncrona»). Se guardan en `tension` del JSON y no suman puntos del semáforo.
 
+En la web, los medidores de solar y síncronas son una sola señal: sus barras se marcan juntas solo cuando se cumplen ambas condiciones.
+
 ## Despliegue
 
 - Cada push a `main` despliega a producción, aunque los tests fallen: el GitHub Action solo avisa. Pregunta antes de hacer push.
-- El resumen usa Vercel Schedules (`schedules` en `vercel.json`, no `crons`), en hora de Madrid: `resumen-diario` a las 10:30 y dos reintentos a las 11:30 y a las 12:30, con hasta 15 minutos de margen en Hobby. La función actúa a la hora 10 y, a las 11 y a las 12, solo si no existe el resumen de ayer. `?force=1` salta esas comprobaciones. No vuelvas a `crons`: con tres entradas en la misma ruta, en la práctica solo parecía dispararse la de las 10:30 UTC.
+- El resumen usa Vercel Schedules (`schedules` en `vercel.json`, no `crons`), en hora de Madrid: `resumen-diario` a las 10:30 y dos reintentos a las 11:30 y a las 12:30, con hasta 15 minutos de margen en Hobby. La función actúa a las horas 10, 11 y 12 solo si no existe el resumen de ayer, para que una ejecución duplicada no vuelva a llamar a Claude. `?force=1` salta esas comprobaciones y regenera el resumen. No vuelvas a `crons`: con tres entradas en la misma ruta, en la práctica solo parecía dispararse la de las 10:30 UTC.
 - ESIOS: un valor negativo en el mix, como el bombeo en la hidráulica, cuenta como 0.
 - El Blob store es privado, así que usa `access: 'private'`. La autenticación va por `BLOB_STORE_ID` y OIDC, sin `BLOB_READ_WRITE_TOKEN`.
 - Las variables de entorno nuevas solo se aplican tras volver a desplegar.

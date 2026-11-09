@@ -56,9 +56,12 @@ export function evaluarTension(senales = {}, umbrales) {
 
   if (Number.isFinite(mix?.solar) && Number.isFinite(mix?.sincronas)) {
     evaluadas++;
+    const pocaSincrona = mix.solar > umbrales.solarInercia && mix.sincronas < umbrales.sincronasInercia;
     medir('solar', 'Solar en la generación', mix.solar, umbrales.solarInercia, 'mayor', 1);
     medir('sincronas', 'Generación síncrona', mix.sincronas, umbrales.sincronasInercia, 'menor', 1);
-    if (mix.solar > umbrales.solarInercia && mix.sincronas < umbrales.sincronasInercia) {
+    // Es una sola señal: sus dos barras solo se marcan cuando se cumplen ambas condiciones.
+    for (const m of medidas.slice(-2)) { m.conjunta = true; m.superado = pocaSincrona; }
+    if (pocaSincrona) {
       activas.push({ clave: 'mix', texto: `Poca generación síncrona: solar al ${pct(mix.solar)} % y síncronas al ${pct(mix.sincronas)} %` });
     }
     // Indica dependencia del gas, no fragilidad de la red: se informa, pero no puntúa.

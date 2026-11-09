@@ -83,12 +83,13 @@ async function ejecutar(req, res) {
   if (!process.env.CRON_SECRET || req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) {
     return res.status(401).json({ error: 'no autorizado' });
   }
-  // ?force=1 salta las comprobaciones de horario.
+  // ?force=1 salta las comprobaciones de horario y de resumen ya publicado.
   const ahora = partes(new Date(), { hour: '2-digit', minute: '2-digit' });
   const ayer = ayerEnMadrid();
   const horaMadrid = `${ahora.hour}:${ahora.minute}`;
-  if (req.query.force !== '1' && ahora.hour !== '10') {
-    if (!['11', '12'].includes(ahora.hour)) return res.status(200).json({ saltado: true, horaMadrid });
+  if (req.query.force !== '1') {
+    if (!['10', '11', '12'].includes(ahora.hour)) return res.status(200).json({ saltado: true, horaMadrid });
+    // Schedules puede entregar una ejecución dos veces: si ya existe el resumen de ayer, no se repite.
     const previo = await get(`resumenes/${ayer.iso}.json`, { access: 'private', useCache: false });
     if (previo) {
       await previo.stream?.cancel();

@@ -23,7 +23,7 @@ const ahora = iso => mock.timers.enable({ apis: ['Date'], now: new Date(iso).get
 beforeEach(() => {
   process.env.CRON_SECRET = 's3creto';
   puts.length = 0;
-  existe = true;
+  existe = false;
   respuesta = { stop_reason: 'end_turn', model: 'm', content: [{ type: 'text', text: 'Resumen de prueba' }] };
   globalThis.fetch = async () => new Response(JSON.stringify(datos), { status: 200 });
 });
@@ -43,7 +43,7 @@ test('rechaza todo si CRON_SECRET no está definido', async () => {
   assert.equal(res.statusCode, 401);
 });
 
-test('en invierno se ejecuta a las 09:30 UTC y salta las 08:30', async () => {
+test('en invierno (UTC+1) se ejecuta a las 10:30 de Madrid y salta las 09:30', async () => {
   ahora('2026-01-15T08:30:00Z');
   let res = fakeRes(); await handler(req(), res);
   assert.equal(res.body.saltado, true);
@@ -52,8 +52,8 @@ test('en invierno se ejecuta a las 09:30 UTC y salta las 08:30', async () => {
   assert.equal(res.body.ok, true);
 });
 
-test('en verano se ejecuta a las 08:30 UTC y salta las 09:30', async () => {
-  ahora('2026-07-15T09:30:00Z');
+test('en verano (UTC+2) se ejecuta a las 10:30 de Madrid y salta las 09:30', async () => {
+  ahora('2026-07-15T07:30:00Z');
   let res = fakeRes(); await handler(req(), res);
   assert.equal(res.body.saltado, true);
   mock.timers.reset(); ahora('2026-07-15T08:30:00Z');
@@ -61,7 +61,7 @@ test('en verano se ejecuta a las 08:30 UTC y salta las 09:30', async () => {
   assert.equal(res.body.ok, true);
 });
 
-test('a las 11 y a las 12 reintenta solo si el resumen de ayer no existe', async () => {
+test('cualquier hora de la ventana se salta si el resumen de ayer ya existe', async () => {
   ahora('2026-07-15T09:30:00Z'); // 11:30 en Madrid
   existe = false;
   let res = fakeRes(); await handler(req(), res);
@@ -71,6 +71,23 @@ test('a las 11 y a las 12 reintenta solo si el resumen de ayer no existe', async
   res = fakeRes(); await handler(req(), res);
   assert.equal(res.body.motivo, 'ya publicado');
   assert.equal(puts.length, 0);
+});
+
+test('una ejecución duplicada a las 10 no vuelve a llamar a Claude ni sobrescribe', async () => {
+  ahora('2026-11-05T09:30:00Z');
+  existe = true;
+  respuesta = null; // si llamara a Claude, fallaría
+  const res = fakeRes(); await handler(req(), res);
+  assert.equal(res.body.motivo, 'ya publicado');
+  assert.equal(puts.length, 0);
+});
+
+test('force=1 regenera aunque el resumen ya exista', async () => {
+  ahora('2026-11-05T09:30:00Z');
+  existe = true;
+  const res = fakeRes(); await handler(req({ force: '1' }), res);
+  assert.equal(res.body.ok, true);
+  assert.equal(puts.length, 2);
 });
 
 test('fuera de la ventana no actúa aunque falte el resumen', async () => {
